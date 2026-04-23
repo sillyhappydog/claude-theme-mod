@@ -1,0 +1,11 @@
+*.exe
+*.asar
+*.asar.unpacked/
+node_modules/
+.idea/
+*.backup
+app_*/
+TASK_*.md
+PROMPT_*.md
+PROMPT_*.txt
+HANDOFF_*.md
