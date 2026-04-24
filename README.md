@@ -1,15 +1,12 @@
 # claude-desktop-modding
 
-![What if I told you... you can create your own theme in Claude Desktop](screenshots/morpheus.jpg)&gt; \*\*For humans\*\*: You don't have to do any of this manually. Paste this README into Claude Code and say "do this." It will handle the rest.
+![What if I told you... you can create your own theme in Claude Desktop](screenshots/morpheus.jpg)&gt; \*\*For humans\*\*: You don't have to do any of this manually. Paste [`PROMPT_FOR_CLAUDE_CODE.md`](PROMPT_FOR_CLAUDE_CODE.md) into Claude Code and say "do this." It will handle the rest.
 
 > What if I told you... flipping 2 Electron Fuses lets you theme any Electron app.
 
-A toolkit for theming Claude Desktop on Windows. We reverse-engineered the 4-layer security architecture, found the shortest path through it, and built a Theme Studio for designing custom themes.
-
-**No proprietary code is included.** Share the knowledge, not the binary.
+A toolkit for theming Claude Desktop on Windows. We reverse-engineered the 4-layer security architecture, found the shortest path through it, and built a Theme Studio for designing custom themes. **No proprietary code is included.** Share the knowledge, not the binary.
 
 ## The 4 Layers
-
 Claude Desktop's Electron build has four security mechanisms that prevent modification:
 
 LayerMechanismWhoApplies toBypassMSIX AppxBlockMapPer-file SHA256 block hashes + package signatureMicrosoftMSIX build onlySwitch to Squirrel build (`winget install Anthropic.Claude`)Electron Asar Integrityasar SHA256 hash embedded in the Electron binaryElectronAll builds`@electron/fuses`: set `EnableEmbeddedAsarIntegrityValidation` to OFFElectron Fuse: InspectArgsBlocks `--inspect` / `--inspect-brk` flagsElectronAll builds`@electron/fuses`: set `EnableNodeCliInspectArguments` to ONArgv Guard (CDP block)Custom code in `index.js` that scans `process.argv` for `--remote-debugging-port` and `--remote-debugging-pipe`, exits if found**Anthropic**All buildsPatch the guard function in the asar to always return `false`
@@ -55,7 +52,6 @@ This disables asar integrity validation and enables inspector args. Run `node re
 
 ```bash
 cd .. && npm install @electron/asar node tools/inject_theme_loader.js
-
 ```
 
 This extracts the asar, patches the Electron main process with the theme loader, repacks, and deploys. One command, fully automated. Claude Desktop will restart.
@@ -89,7 +85,6 @@ Use **Theme Studio** (below) to design themes visually and export JSON.
 ![Matrix Theme](screenshots/matrix.png)
 
 ### Restore
-
 To undo all modifications and restore the original Claude Desktop:
 
 ```powershell
@@ -142,6 +137,7 @@ claude-desktop-modding/
 ```
 
 ## CDP Access (Advanced)
+
 If you want to go beyond theme JSON — inspecting the live DOM, testing CSS changes in real time, or building deeper customizations — you can open Chrome DevTools Protocol on Claude Desktop.
 
 **This requires patching Anthropic's argv guard (Layer 4).** The theme injector does NOT do this automatically. It's a separate, opt-in step.
@@ -159,12 +155,18 @@ grep -r "remote-debugging-port" ./app_work/.vite/build/ --include="*.js" -l
 
 # 3. In the file found, locate a function like:
 #    function oEe(t){return t.some(e=>{...remote-debugging-port...})}
-#    Replace its body with: function oEe(t){return false}
-#    (The function name varies per build, but the string literal is stable.)
+```
+
+# Replace its body with: function oEe(t){return false}
+
+# (The function name varies per build, but the string literal is stable.)
 
 # 4. Repack and deploy
+
 npx @electron/asar pack ./app_work ./app_patched.asar
+
 # Stop Claude, copy app_patched.asar over app.asar, clean up
+
 ```
 
 ### Launching with CDP
