@@ -7,6 +7,7 @@
 A toolkit for theming Claude Desktop on Windows. We reverse-engineered the 4-layer security architecture, found the shortest path through it, and built a Theme Studio for designing custom themes. **No proprietary code is included.** Share the knowledge, not the binary.
 
 ## The 4 Layers
+
 Claude Desktop's Electron build has four security mechanisms that prevent modification:
 
 LayerMechanismWhoApplies toBypassMSIX AppxBlockMapPer-file SHA256 block hashes + package signatureMicrosoftMSIX build onlySwitch to Squirrel build (`winget install Anthropic.Claude`)Electron Asar Integrityasar SHA256 hash embedded in the Electron binaryElectronAll builds`@electron/fuses`: set `EnableEmbeddedAsarIntegrityValidation` to OFFElectron Fuse: InspectArgsBlocks `--inspect` / `--inspect-brk` flagsElectronAll builds`@electron/fuses`: set `EnableNodeCliInspectArguments` to ONArgv Guard (CDP block)Custom code in `index.js` that scans `process.argv` for `--remote-debugging-port` and `--remote-debugging-pipe`, exits if found**Anthropic**All buildsPatch the guard function in the asar to always return `false`
@@ -15,14 +16,9 @@ Layers 1–3 are standard Electron/OS mechanisms. Layer 4 is **Anthropic's own c
 
 ```javascript
 ```
-// Anthropic's argv guard (obfuscated name varies per build)
-function oEe(t) {
-  return t.some(e => {
-    const r = e.replace(/^(?:--|-|\/)/,"").toLowerCase();
-    return r.startsWith("remote-debugging-port")
-        || r.startsWith("remote-debugging-pipe")
-  })
-}
+
+// Anthropic's argv guard (obfuscated name varies per build) function oEe(t) { return t.some(e =&gt; { const r = e.replace(/^(?:--|-|/)/,"").toLowerCase(); return r.startsWith("remote-debugging-port") || r.startsWith("remote-debugging-pipe") }) }
+
 ```
 
 Why does Anthropic block CDP? Claude Desktop holds an authenticated session (login tokens, conversation history). An open DevTools port would let any local process read cookies, inject JS, and exfiltrate data. Discord, Slack, and other Electron apps use similar guards.
@@ -43,10 +39,13 @@ See docs/IMPLEMENTATION_LOG.md and docs/IMPLEMENTATION_LOG_v0.2.md for the full 
 ```bash
 cd tools && npm install @electron/fuses
 ```
+
 node flip_fuses.js
+
 ```
 
 This disables asar integrity validation and enables inspector args. Run `node read_fuses.js` to verify.
+```
 
 ### Step 2: Inject the theme loader
 
@@ -143,7 +142,6 @@ If you want to go beyond theme JSON — inspecting the live DOM, testing CSS cha
 **This requires patching Anthropic's argv guard (Layer 4).** The theme injector does NOT do this automatically. It's a separate, opt-in step.
 
 ### Patching the argv guard
-
 After running `inject_theme_loader.js`, the argv guard needs to be patched separately:
 
 ```bash

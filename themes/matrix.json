@@ -1,0 +1,13 @@
+{
+  "name": "Matrix",
+  "bgMain": "#0A0A0A",
+  "bgSidebar": "#050505",
+  "textPrimary": "#00FF41",
+  "textSecondary": "#00CC33",
+  "textMuted": "#008F26",
+  "accentPrimary": "#00FF41",
+  "inlineCodeText": "#FF6B6B",
+  "successColor": "#00FF41",
+  "borderColor": "#0A3A0A",
+  "codeBg": "rgba(0,255,10,0.05)"
+}
