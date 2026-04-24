@@ -35,6 +35,13 @@ const __themePath = require('path');
 const __themeOs = require('os');
 
 const __THEME_FILE = __themePath.join(__themeOs.homedir(), '.claude', 'theme.json');
+const __THEME_DEBUG_LOG = __themePath.join(__themeOs.homedir(), '.claude', 'theme-debug.log');
+
+// Debug: confirm theme loader code was reached
+__themeFs.appendFileSync(__THEME_DEBUG_LOG, '[' + new Date().toISOString() + '] THEME_LOADER_CODE reached, __THEME_FILE=' + __THEME_FILE + '\\n');
+
+// Captured by dom-ready handler — avoids pe/Qt scope issues
+var __themeWc = null;
 
 const __THEME_VAR_MAP = {
   bgMain:         [['--bg-000', 'hsl'], ['--bg-400', 'hsl'], ['--bg-500', 'hsl'], ['--claude-background-color', 'hex']],
@@ -254,7 +261,32 @@ async function __themeApply(wc) {
     script += "window.__themeObs.observe(document.documentElement,{childList:true,subtree:true,attributes:true,attributeFilter:['class','data-mode','style']});";
     script += "return true;})();"
 
-    var ok = await wc.executeJavaScript(script).catch(function(){ return false; });
+    // Use debugger API (same as CDP Runtime.evaluate) instead of executeJavaScript
+    // executeJavaScript may run in isolated context; debugger API targets the main world
+    var ok = false;
+    try {
+      try { wc.debugger.attach('1.3'); } catch(ae) { /* already attached or CDP active */ }
+      var result = await wc.debugger.sendCommand('Runtime.evaluate', { expression: script });
+      ok = result && result.result && result.result.value === true;
+      try { wc.debugger.detach(); } catch(de) { /* ignore detach errors */ }
+    } catch(dbgErr) {
+      console.error('[theme-loader] debugger API failed:', dbgErr.message, '- falling back to executeJavaScript');
+      ok = await wc.executeJavaScript(script).catch(function(){ return false; });
+    }
+
+    // Also use insertCSS as a backup — more reliable in some Electron configs
+    var cssVars = ':root{';
+    for (var ci = 0; ci < pairs.length; ci++) {
+      cssVars += pairs[ci][0] + ':' + pairs[ci][1] + '!important;';
+    }
+    cssVars += 'color-scheme:' + cs + '!important}';
+    if (theme.bgMain && __themeIsValidColor(theme.bgMain)) {
+      cssVars += 'body{background:' + theme.bgMain + '!important}';
+    }
+    cssVars += '.standard-markdown code:not(pre code){border:none!important;background:transparent!important}';
+    cssVars += 'pre.code-block__code,pre.code-block__code>code{background:transparent!important}';
+    await wc.insertCSS(cssVars).catch(function(e){ console.error('[theme-loader] insertCSS failed:', e.message); });
+
     if (!ok) return;
     const __themeName = typeof theme.name === 'string' ? theme.name.slice(0, 50).replace(/[^a-zA-Z0-9 _-]/g, '') : 'custom';
     console.log('[theme-loader] Applied theme: ' + __themeName + ' (wc:' + wc.id + ', vars: ' + pairs.length + ')');
@@ -273,14 +305,38 @@ function __themeApplyAll() {
 __themeFs.watchFile(__THEME_FILE, { interval: 1000 }, (curr, prev) => {
   if (curr.mtimeMs === prev.mtimeMs) return;
   console.log('[theme-loader] theme.json changed, reloading...');
-  __themeApplyAll();
+  try {
+    var allWc = require('electron').webContents.getAllWebContents();
+    allWc.forEach(function(w) { if (!w.isDestroyed()) __themeApply(w); });
+  } catch(e) { console.error('[theme-loader] hot-reload failed:', e.message); }
 });
+
+// Global hook: apply theme to EVERY webContents on EVERY load
+// This catches navigations, redirects, and SPA re-renders that wipe injected CSS
+require('electron').app.on('web-contents-created', (event, wc) => {
+  var _applyToThis = function() {
+    if (wc.isDestroyed()) return;
+    __themeApply(wc);
+  };
+  wc.on('did-finish-load', _applyToThis);
+  wc.on('did-navigate', _applyToThis);
+  wc.on('did-navigate-in-page', _applyToThis);
+});
+
+// Nuclear option: main-process interval that re-applies to ALL webContents every 2s
+// Uses __themeApply which now uses debugger API (internal CDP) 
+setInterval(function() {
+  try {
+    var allWc = require('electron').webContents.getAllWebContents();
+    allWc.forEach(function(w) { if (!w.isDestroyed()) __themeApply(w); });
+  } catch(e) {}
+}, 2000);
 `;
 
 // ── Patterns ──
 
 const DOM_READY_ORIGINAL = 'o.webContents.on("dom-ready",()=>{nJ()})';
-const DOM_READY_V03      = 'o.webContents.on("dom-ready",()=>{nJ();__themeApplyAll()})';
+const DOM_READY_V03      = 'o.webContents.on("dom-ready",()=>{nJ();var _dl=require("path").join(require("os").homedir(),".claude","theme-debug.log");setTimeout(function(){try{var _allWc=require("electron").webContents.getAllWebContents();require("fs").appendFileSync(_dl,"["+new Date().toISOString()+"] delayed apply, allWc="+_allWc.map(function(w){return w.id+":"+w.getURL().substring(0,40)}).join("|")+"\\n");_allWc.forEach(function(w){if(!w.isDestroyed()){__themeApply(w).then(function(){require("fs").appendFileSync(_dl,"["+new Date().toISOString()+"] wc.id="+w.id+" OK\\n")}).catch(function(e){require("fs").appendFileSync(_dl,"["+new Date().toISOString()+"] wc.id="+w.id+" ERR: "+e.message+"\\n")})}});}catch(e){require("fs").appendFileSync(_dl,"["+new Date().toISOString()+"] CATCH: "+e.message+"\\n")}},3000)})';
 const SOURCEMAP_MARKER   = '\n//# sourceMappingURL=index.js.map';
 
 // GLt: hardcoded background color function that overrides theme on mode switch
