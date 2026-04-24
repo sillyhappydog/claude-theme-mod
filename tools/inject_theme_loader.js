@@ -1,15 +1,20 @@
-// Claude Theme Loader v0.3 — Injector
+// Claude Theme Loader v0.5 — Injector
 // Usage: node tools/inject_theme_loader.js
 //
 // Patches Claude Desktop's index.js (Electron main process) with a theme
 // loader that reads ~/.claude/theme.json and hot-reloads on file changes.
 //
-// 2-point injection:
+// Injection points:
 //   Point A: Theme loader code + fs.watchFile appended at module scope
 //   Point B: dom-ready handler patched to call __themeApply()
+//   Point C: GLt() background color function → reads theme.json
+//   Point D: QyA() BrowserWindow initial bg → reads theme.json
+//   Point E: setBackgroundColor → reads theme.json
+//   Point F: argv guard patched to allow --remote-debugging-port (CDP)
+//   Shell:   index.html body class + override CSS
 //
 // Idempotent: safe to run multiple times. Skips if already injected.
-// Does NOT modify mainView.js, index.html, or any preload scripts.
+// Restores from backup each run to ensure clean patching.
 
 const fs = require('fs');
 const path = require('path');
@@ -201,8 +206,10 @@ async function __themeApply(wc) {
         css += '.bg-bg-000\\/50{background-color:' + codeBgVal + '!important;background:' + codeBgVal + '!important}';
         css += '[class*="code-block"],[class*="code-block"]>*,[class*="code-block"] div,[class*="code-block"] pre{background-color:' + codeBgVal + '!important;background:' + codeBgVal + '!important}';
       }
-      // Inline code: remove border
-      css += '.ReactMarkdown code,div.ProseMirror>p>code{border:none!important}';
+      // Inline code: remove border and bg (container is .standard-markdown, not .ReactMarkdown)
+      css += '.standard-markdown code:not(pre code){border:none!important;background:transparent!important}';
+      // Code block: prevent alpha stacking — only the outer wrapper (bg-bg-000/50) should carry codeBg
+      css += 'pre.code-block__code,pre.code-block__code>code{background:transparent!important;background-color:transparent!important}';
       if (bgMainHSL) {
         var h0 = bgMainHSL.h + ' ' + bgMainHSL.s + '% ' + bgMainHSL.l + '%';
         css += '.bg-bg-000{background-color:hsl(' + h0 + ')!important}';
@@ -224,17 +231,18 @@ async function __themeApply(wc) {
     script += "document.querySelectorAll('[class*=\\"from-bg-100\\"][class*=\\"gradient\\"]').forEach(function(g){g.style.setProperty('background-image','none','important');});";
     // Disclaimer bar
     script += "document.querySelectorAll('div.text-center.text-xs').forEach(function(d){if(d.textContent&&d.textContent.indexOf('make mistakes')!==-1&&_bgM)d.style.setProperty('background-color',_bgM,'important');});";
-    // Code block background: walk UP from pre and force all ancestors' backgrounds
+    // Code block background: clear pre/code bg to prevent alpha stacking, set only on outer wrapper
     var codeBgVal2 = (theme.codeBg) ? JSON.stringify(theme.codeBg) : 'null';
     script += "var _cBg=" + codeBgVal2 + ";";
     script += "if(_cBg){document.querySelectorAll('pre.code-block__code').forEach(function(p){";
-    script += "p.style.setProperty('background',_cBg,'important');";
+    script += "p.style.setProperty('background','transparent','important');";
+    script += "var c=p.querySelector('code');if(c)c.style.setProperty('background','transparent','important');";
     script += "var el=p.parentElement;for(var i=0;i<5&&el;i++){";
     script += "var bg=getComputedStyle(el).backgroundColor;";
     script += "if(bg&&bg!=='rgba(0, 0, 0, 0)'&&bg!=='transparent'){el.style.setProperty('background-color',_cBg,'important');el.style.setProperty('background',_cBg,'important');el.style.setProperty('border-color','transparent','important');}";
     script += "el=el.parentElement;}});}";
-    // Inline code: remove border
-    script += "document.querySelectorAll('code').forEach(function(c){if(!c.closest('pre')){c.style.setProperty('border-color','transparent','important');}});";
+    // Inline code: remove border entirely (border-color alone leaves 1px width) and clear bg
+    script += "document.querySelectorAll('code').forEach(function(c){if(!c.closest('pre')){c.style.setProperty('border','none','important');c.style.setProperty('background','transparent','important');}});";
     script += "}";
     script += "__themeFixEls();";
     // Periodic re-apply for elements that resist MutationObserver (e.g., Shiki code blocks)
@@ -382,6 +390,32 @@ async function main() {
         console.log('  [Point E] setBackgroundColor pattern not found (may have changed)');
     }
 
+    // Point F: patch argv guard to allow --remote-debugging-port
+    const rdpIdx = content.indexOf('"remote-debugging-port"');
+    if (rdpIdx !== -1) {
+        // Walk backwards to find "function XXX(t){"
+        const searchStart = Math.max(0, rdpIdx - 200);
+        const chunk = content.substring(searchStart, rdpIdx);
+        const funcMatch = chunk.match(/function (\w+)\(t\)\{return t\.some/);
+        if (funcMatch) {
+            const funcName = funcMatch[1];
+            // Find the end of this function: after "remote-debugging-pipe" look for "})}""
+            const pipeIdx = content.indexOf('"remote-debugging-pipe"', rdpIdx);
+            const endIdx = pipeIdx !== -1 ? content.indexOf('})}', pipeIdx) : -1;
+            if (endIdx !== -1) {
+                const fullFunc = content.substring(searchStart + funcMatch.index, endIdx + 3);
+                content = content.replace(fullFunc, 'function ' + funcName + '(t){return false}');
+                console.log('  [Point F] Patched argv guard ' + funcName + '() (CDP enabled)');
+            } else {
+                console.log('  [Point F] Could not find argv guard function end');
+            }
+        } else {
+            console.log('  [Point F] Could not find argv guard function start');
+        }
+    } else {
+        console.log('  [Point F] "remote-debugging-port" not found in index.js');
+    }
+
     fs.writeFileSync(indexPath, content);
 
     // Patch index.html files — shell inline <style> with claude-* variables
@@ -481,12 +515,13 @@ async function main() {
     fs.rmSync(workDir, { recursive: true });
     fs.unlinkSync(outAsar);
 
-    // Relaunch
-    const claudeExe = path.join(process.env.LOCALAPPDATA, 'AnthropicClaude', 'claude.exe');
-    require('child_process').spawn(claudeExe, [], { detached: true, stdio: 'ignore' }).unref();
+    // Relaunch with CDP enabled (use direct exe, not Squirrel launcher)
+    const claudeExe = path.join(appDir, 'claude.exe');
+    require('child_process').spawn(claudeExe, ['--remote-debugging-port=9222'], { detached: true, stdio: 'ignore' }).unref();
 
-    console.log('\nDone! Claude Desktop relaunched with v0.4 theme loader.');
-    console.log('Save your theme to: ' + path.join(require('os').homedir(), '.claude', 'theme.json'));
+    console.log('\nDone! Claude Desktop relaunched with v0.5 theme loader + CDP on port 9222.');
+    console.log('DevTools: http://localhost:9222');
+    console.log('Theme file: ' + path.join(require('os').homedir(), '.claude', 'theme.json'));
     console.log('Changes are picked up automatically — no restart needed.');
 }
 

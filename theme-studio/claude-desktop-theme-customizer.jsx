@@ -2,75 +2,55 @@ import { useState, useCallback } from "react";
 
 const defaultTheme = {
   bgMain: "#1a0a2e", bgSidebar: "#0d0221", textPrimary: "#7CFFCB", textSecondary: "#5CE6B8",
-  textMuted: "#44CCA0", accentPrimary: "#ff71ce", accentSecondary: "#01cdfe", accentTertiary: "#b967ff",
-  codeBg: "#0a0118", codeText: "#7CFFCB", inlineCodeText: "#ff71ce", headingColor: "#ff71ce",
-  boldColor: "#a0ffe0", linkColor: "#01cdfe", borderColor: "#6b3fa0", selectionBg: "#ff71ce66",
-  userBubbleBg: "#2a1548", userBubbleText: "#e0d0ff",
+  textMuted: "#44CCA0", accentPrimary: "#ff71ce", codeBg: "#0a0118", inlineCodeText: "#ff71ce",
+  borderColor: "#6b3fa0", successColor: "#ff71ce",
 };
 
 const presets = {
   "Onett": {
     bgMain: "#78B848", bgSidebar: "#5A8838", textPrimary: "#1A1808", textSecondary: "#2A2818",
-    textMuted: "#486830", accentPrimary: "#C83830", accentSecondary: "#3890D8", accentTertiary: "#685828",
-    codeBg: "#2A3818", codeText: "#A8D878", inlineCodeText: "#C83830", headingColor: "#2A2818",
-    boldColor: "#1A1808", linkColor: "#3890D8", borderColor: "#5A8838", selectionBg: "#3890D855",
-    userBubbleBg: "#A8D070", userBubbleText: "#1A1808",
+    textMuted: "#486830", accentPrimary: "#C83830", codeBg: "#2A3818", inlineCodeText: "#C83830",
+    borderColor: "#5A8838", successColor: "#C83830",
   },
   "Twoson": {
     bgMain: "#E8A848", bgSidebar: "#C08030", textPrimary: "#281808", textSecondary: "#483018",
-    textMuted: "#886838", accentPrimary: "#D05028", accentSecondary: "#48A078", accentTertiary: "#985830",
-    codeBg: "#382008", codeText: "#F0C868", inlineCodeText: "#D05028", headingColor: "#382008",
-    boldColor: "#281808", linkColor: "#48A078", borderColor: "#C08030", selectionBg: "#48A07855",
-    userBubbleBg: "#D09038", userBubbleText: "#281808",
+    textMuted: "#886838", accentPrimary: "#D05028", codeBg: "#382008", inlineCodeText: "#D05028",
+    borderColor: "#C08030", successColor: "#D05028",
   },
   "Threed": {
     bgMain: "#283848", bgSidebar: "#182028", textPrimary: "#8898A8", textSecondary: "#6878A0",
-    textMuted: "#485868", accentPrimary: "#70A830", accentSecondary: "#4868A8", accentTertiary: "#584878",
-    codeBg: "#101820", codeText: "#6888B0", inlineCodeText: "#70A830", headingColor: "#8898A8",
-    boldColor: "#A0B0C0", linkColor: "#4868A8", borderColor: "#384858", selectionBg: "#70A83055",
-    userBubbleBg: "#1C2830", userBubbleText: "#8898A8",
+    textMuted: "#485868", accentPrimary: "#70A830", codeBg: "#101820", inlineCodeText: "#70A830",
+    borderColor: "#384858", successColor: "#70A830",
   },
   "Fourside": {
     bgMain: "#C8C0B0", bgSidebar: "#A89888", textPrimary: "#2A2418", textSecondary: "#484038",
-    textMuted: "#706858", accentPrimary: "#C88070", accentSecondary: "#508868", accentTertiary: "#887080",
-    codeBg: "#586860", codeText: "#98B8A8", inlineCodeText: "#C88070", headingColor: "#484038",
-    boldColor: "#2A2418", linkColor: "#508868", borderColor: "#908878", selectionBg: "#98B8A855",
-    userBubbleBg: "#B8B0A0", userBubbleText: "#2A2418",
+    textMuted: "#706858", accentPrimary: "#C88070", codeBg: "#586860", inlineCodeText: "#C88070",
+    borderColor: "#908878", successColor: "#C88070",
   },
   "Moonside": {
     bgMain: "#000000", bgSidebar: "#0a0014", textPrimary: "#E08820", textSecondary: "#FFFF00",
-    textMuted: "#6630AA", accentPrimary: "#FF0088", accentSecondary: "#00E830", accentTertiary: "#6630AA",
-    codeBg: "#3A2088", codeText: "#FFFF00", inlineCodeText: "#FF0088", headingColor: "#FF0088",
-    boldColor: "#FFFF00", linkColor: "#00E830", borderColor: "#E08820", selectionBg: "#FF008855",
-    userBubbleBg: "#3A2088", userBubbleText: "#E08820",
+    textMuted: "#6630AA", accentPrimary: "#FF0088", codeBg: "#3A2088", inlineCodeText: "#FF0088",
+    borderColor: "#E08820", successColor: "#FF0088",
   },
   "Summers": {
     bgMain: "#E0F0F8", bgSidebar: "#B8D8E8", textPrimary: "#183048", textSecondary: "#305068",
-    textMuted: "#7098B0", accentPrimary: "#E87088", accentSecondary: "#38A8C8", accentTertiary: "#8870A8",
-    codeBg: "#284058", codeText: "#90D0E8", inlineCodeText: "#E87088", headingColor: "#183048",
-    boldColor: "#183048", linkColor: "#38A8C8", borderColor: "#90B8D0", selectionBg: "#38A8C844",
-    userBubbleBg: "#C8E0F0", userBubbleText: "#183048",
+    textMuted: "#7098B0", accentPrimary: "#E87088", codeBg: "#284058", inlineCodeText: "#E87088",
+    borderColor: "#90B8D0", successColor: "#E87088",
   },
   "Scaraba": {
     bgMain: "#D8B878", bgSidebar: "#B89048", textPrimary: "#281808", textSecondary: "#483820",
-    textMuted: "#887050", accentPrimary: "#C05028", accentSecondary: "#2868A8", accentTertiary: "#884830",
-    codeBg: "#382810", codeText: "#D8C088", inlineCodeText: "#C05028", headingColor: "#382810",
-    boldColor: "#281808", linkColor: "#2868A8", borderColor: "#A08048", selectionBg: "#2868A844",
-    userBubbleBg: "#C8A060", userBubbleText: "#281808",
+    textMuted: "#887050", accentPrimary: "#C05028", codeBg: "#382810", inlineCodeText: "#C05028",
+    borderColor: "#A08048", successColor: "#C05028",
   },
   "Saturn Valley": {
     bgMain: "#F8C8D0", bgSidebar: "#E0A0B0", textPrimary: "#382028", textSecondary: "#584048",
-    textMuted: "#988088", accentPrimary: "#E85888", accentSecondary: "#58C898", accentTertiary: "#A870B8",
-    codeBg: "#483040", codeText: "#F0B0C0", inlineCodeText: "#58C898", headingColor: "#382028",
-    boldColor: "#382028", linkColor: "#58C898", borderColor: "#D098A8", selectionBg: "#58C89855",
-    userBubbleBg: "#E8B0C0", userBubbleText: "#382028",
+    textMuted: "#988088", accentPrimary: "#E85888", codeBg: "#483040", inlineCodeText: "#58C898",
+    borderColor: "#D098A8", successColor: "#E85888",
   },
   "Magicant": {
     bgMain: "#F0C8E8", bgSidebar: "#D8A0D0", textPrimary: "#301838", textSecondary: "#503058",
-    textMuted: "#907098", accentPrimary: "#E060A0", accentSecondary: "#80C0E8", accentTertiary: "#B868D0",
-    codeBg: "#382040", codeText: "#D8A8E8", inlineCodeText: "#E060A0", headingColor: "#382040",
-    boldColor: "#301838", linkColor: "#80C0E8", borderColor: "#C890C0", selectionBg: "#80C0E844",
-    userBubbleBg: "#E0B0D8", userBubbleText: "#301838",
+    textMuted: "#907098", accentPrimary: "#E060A0", codeBg: "#382040", inlineCodeText: "#E060A0",
+    borderColor: "#C890C0", successColor: "#E060A0",
   },
 };
 
@@ -111,7 +91,7 @@ function ClaudeMockup({ t }) {
             ))}
           </div>
           <div style={{ padding: "0 12px", marginBottom: 6 }}>
-            <div style={{ fontSize: 11, color: t.accentSecondary, cursor: "pointer", padding: "4px 0" }}>+ New chat</div>
+            <div style={{ fontSize: 11, color: t.accentPrimary, cursor: "pointer", padding: "4px 0" }}>+ New chat</div>
           </div>
           <div style={{ fontSize: 9, color: t.textMuted, padding: "6px 12px 2px", textTransform: "uppercase", letterSpacing: 1, opacity: 0.6 }}>Recent</div>
           {["Let's Talk!", "Honesty is the key to...", "Kaggle glove.6B.50d", "grep ^honesty dim[6]", "have you talked to her?"].map((title, i) => (
@@ -133,7 +113,7 @@ function ClaudeMockup({ t }) {
 
             {/* User message */}
             <div style={{ alignSelf: "flex-end", maxWidth: "75%" }}>
-              <div style={{ background: t.userBubbleBg, color: t.userBubbleText, padding: "10px 14px", borderRadius: "14px 14px 4px 14px", fontSize: 13, lineHeight: 1.5 }}>
+              <div style={{ background: `${t.bgSidebar}cc`, color: t.textPrimary, padding: "10px 14px", borderRadius: "14px 14px 4px 14px", fontSize: 13, lineHeight: 1.5 }}>
                 Can I modify Claude Desktop's theme colors by patching the binary?
               </div>
             </div>
@@ -141,22 +121,22 @@ function ClaudeMockup({ t }) {
             {/* Claude response */}
             <div style={{ maxWidth: "85%" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
-                <div style={{ width: 20, height: 20, borderRadius: "50%", background: `linear-gradient(135deg, ${t.accentPrimary}, ${t.accentTertiary})`, fontSize: 10, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 700 }}>C</div>
+                <div style={{ width: 20, height: 20, borderRadius: "50%", background: `linear-gradient(135deg, ${t.accentPrimary}, ${t.accentPrimary})`, fontSize: 10, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 700 }}>C</div>
                 <span style={{ fontSize: 11, color: t.textMuted }}>Claude</span>
               </div>
               <div style={{ color: t.textPrimary, fontSize: 13, lineHeight: 1.65 }}>
-                <span style={{ color: t.headingColor, fontSize: 15, fontWeight: 700, display: "block", marginBottom: 6 }}>
+                <span style={{ color: t.textPrimary, fontSize: 15, fontWeight: 700, display: "block", marginBottom: 6 }}>
                   3-Layer Security Analysis
                 </span>
-                Electron apps have a <strong style={{ color: t.boldColor }}>3-layer security</strong> architecture.
-                See <a href="#" style={{ color: t.linkColor, textDecoration: "none" }} onClick={e => e.preventDefault()}>IMPLEMENTATION_LOG</a> for details.
+                Electron apps have a <strong style={{ color: t.textPrimary }}>3-layer security</strong> architecture.
+                See <a href="#" style={{ color: t.accentPrimary, textDecoration: "none" }} onClick={e => e.preventDefault()}>IMPLEMENTATION_LOG</a> for details.
               </div>
 
               {/* Code block */}
               <div style={{ background: t.codeBg, borderRadius: 8, padding: "12px 14px", margin: "10px 0", border: `1px solid ${t.borderColor}30`, fontFamily: "'Cascadia Code', 'Fira Code', monospace", fontSize: 12, lineHeight: 1.6, overflowX: "auto" }}>
-                <div><span style={{ color: t.accentPrimary }}>const</span> <span style={{ color: "#ddd" }}>{"{"}</span> <span style={{ color: t.codeText }}>flipFuses</span><span style={{ color: "#ddd" }}>{","}</span> <span style={{ color: t.codeText }}>FuseV1Options</span> <span style={{ color: "#ddd" }}>{"}"}</span> <span style={{ color: t.accentPrimary }}>=</span> <span style={{ color: t.accentSecondary }}>require</span><span style={{ color: "#ddd" }}>(</span><span style={{ color: t.accentSecondary }}>'@electron/fuses'</span><span style={{ color: "#ddd" }}>)</span><span style={{ color: "#ddd" }}>;</span></div>
-                <div style={{ marginTop: 4 }}><span style={{ color: t.accentPrimary }}>await</span> <span style={{ color: t.codeText }}>flipFuses</span><span style={{ color: "#ddd" }}>(</span><span style={{ color: t.accentSecondary }}>'claude.exe'</span><span style={{ color: "#ddd" }}>,</span> <span style={{ color: "#ddd" }}>{"{"}</span></div>
-                <div style={{ paddingLeft: 16 }}><span style={{ color: t.accentTertiary }}>[FuseV1Options.EnableEmbeddedAsarIntegrityValidation]</span><span style={{ color: "#ddd" }}>:</span> <span style={{ color: t.accentPrimary }}>false</span></div>
+                <div><span style={{ color: t.accentPrimary }}>const</span> <span style={{ color: "#ddd" }}>{"{"}</span> <span style={{ color: t.textPrimary }}>flipFuses</span><span style={{ color: "#ddd" }}>{","}</span> <span style={{ color: t.textPrimary }}>FuseV1Options</span> <span style={{ color: "#ddd" }}>{"}"}</span> <span style={{ color: t.accentPrimary }}>=</span> <span style={{ color: t.accentPrimary }}>require</span><span style={{ color: "#ddd" }}>(</span><span style={{ color: t.accentPrimary }}>'@electron/fuses'</span><span style={{ color: "#ddd" }}>)</span><span style={{ color: "#ddd" }}>;</span></div>
+                <div style={{ marginTop: 4 }}><span style={{ color: t.accentPrimary }}>await</span> <span style={{ color: t.textPrimary }}>flipFuses</span><span style={{ color: "#ddd" }}>(</span><span style={{ color: t.accentPrimary }}>'claude.exe'</span><span style={{ color: "#ddd" }}>,</span> <span style={{ color: "#ddd" }}>{"{"}</span></div>
+                <div style={{ paddingLeft: 16 }}><span style={{ color: t.accentPrimary }}>[FuseV1Options.EnableEmbeddedAsarIntegrityValidation]</span><span style={{ color: "#ddd" }}>:</span> <span style={{ color: t.accentPrimary }}>false</span></div>
                 <div><span style={{ color: "#ddd" }}>{"}"}</span><span style={{ color: "#ddd" }}>)</span><span style={{ color: "#ddd" }}>;</span></div>
               </div>
 
@@ -192,11 +172,11 @@ function ClaudeMockup({ t }) {
 
               {/* Blockquote */}
               <blockquote style={{ borderLeft: `3px solid ${t.accentPrimary}`, background: `${t.codeBg}50`, padding: "8px 14px", margin: "8px 0", borderRadius: "0 6px 6px 0" }}>
-                <span style={{ color: t.accentTertiary, fontSize: 12, fontStyle: "italic" }}>Share the knowledge, not the binary.</span>
+                <span style={{ color: t.accentPrimary, fontSize: 12, fontStyle: "italic" }}>Share the knowledge, not the binary.</span>
               </blockquote>
 
               <div style={{ color: t.textSecondary, fontSize: 12, marginTop: 6 }}>
-                Shortest path: <strong style={{ color: t.boldColor }}>Flip 2 fuses → replace asar</strong>. That's all.
+                Shortest path: <strong style={{ color: t.textPrimary }}>Flip 2 fuses → replace asar</strong>. That's all.
               </div>
             </div>
 
@@ -211,7 +191,7 @@ function ClaudeMockup({ t }) {
           <div style={{ padding: "10px 16px 14px", borderTop: `1px solid ${t.borderColor}20`, flexShrink: 0 }}>
             <div style={{ display: "flex", alignItems: "flex-end", background: `${t.bgSidebar}cc`, borderRadius: 12, border: `1px solid ${t.borderColor}30`, padding: "10px 14px" }}>
               <span style={{ flex: 1, fontSize: 13, color: t.textMuted, opacity: 0.6 }}>Reply...</span>
-              <div style={{ width: 28, height: 28, borderRadius: 8, background: `linear-gradient(135deg, ${t.accentPrimary}, ${t.accentTertiary})`, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", boxShadow: `0 0 10px ${t.accentPrimary}40`, flexShrink: 0 }}>
+              <div style={{ width: 28, height: 28, borderRadius: 8, background: `linear-gradient(135deg, ${t.accentPrimary}, ${t.accentPrimary})`, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", boxShadow: `0 0 10px ${t.accentPrimary}40`, flexShrink: 0 }}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 2L11 13"/><path d="M22 2L15 22L11 13L2 9L22 2Z"/></svg>
               </div>
             </div>
@@ -275,10 +255,9 @@ export default function ThemeStudio() {
   const groups = [
     { title: "Background", items: [["bgMain","Main bg"],["bgSidebar","Sidebar bg"]] },
     { title: "Text", items: [["textPrimary","Primary"],["textSecondary","Secondary"],["textMuted","Muted"]] },
-    { title: "Accents", items: [["accentPrimary","Buttons / Caret"],["accentSecondary","Glow / Strings"],["accentTertiary","Scrollbar / Sub"]] },
-    { title: "Typography", items: [["headingColor","Headings"],["boldColor","Bold"],["linkColor","Links"]] },
-    { title: "Code", items: [["codeBg","Code bg"],["codeText","Code text"],["inlineCodeText","Inline code"]] },
-    { title: "UI", items: [["borderColor","Borders"],["selectionBg","Selection"],["userBubbleBg","User bubble"],["userBubbleText","User text"]] },
+    { title: "Accents", items: [["accentPrimary","Buttons / Brand"],["successColor","Success"]] },
+    { title: "Code", items: [["codeBg","Code bg"],["inlineCodeText","Inline code"]] },
+    { title: "UI", items: [["borderColor","Borders"]] },
   ];
 
   return (
