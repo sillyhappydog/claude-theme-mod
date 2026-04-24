@@ -16,3 +16,26 @@ CODEX_TASK.md
 _dump*.txt
 _wsc.txt
 window-shared-backup.css
+
+# Experimental/diagnostic CDP tools
+tools/_cdp_check.js
+tools/cdp_chatbg.js
+tools/cdp_check_v05.js
+tools/cdp_deep_scan.js
+tools/cdp_dframe_fix.js
+tools/cdp_diag.js
+tools/cdp_diag_shell.js
+tools/cdp_fix_all.js
+tools/cdp_glass.js
+tools/cdp_glass2.js
+tools/cdp_gold.js
+tools/cdp_header_fix.js
+tools/cdp_neon.js
+tools/cdp_neon2.js
+tools/cdp_overlap.js
+tools/cdp_overlap2.js
+tools/cdp_shell_fix.js
+tools/cdp_shell_theme.js
+tools/cdp_topbar.js
+tools/cdp_verify.js
+_diag_check/

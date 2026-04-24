@@ -1,0 +1,16 @@
+{
+  "name": "Magicant",
+  "mode": "auto",
+  "bgMain": "#F0C8E8",
+  "bgSidebar": "#D8A0D0",
+  "textPrimary": "#301838",
+  "textSecondary": "#503058",
+  "textMuted": "#907098",
+  "accentPrimary": "#E060A0",
+  "inlineCodeText": "#E060A0",
+  "successColor": "#E060A0",
+  "borderColor": "#C890C0",
+  "codeBg": "#382040",
+  "glassEffect": false,
+  "glowEffect": false
+}

@@ -1,0 +1,16 @@
+{
+  "name": "Summers",
+  "mode": "light",
+  "bgMain": "#E0F0F8",
+  "bgSidebar": "#B8D8E8",
+  "textPrimary": "#183048",
+  "textSecondary": "#305068",
+  "textMuted": "#7098B0",
+  "accentPrimary": "#E87088",
+  "inlineCodeText": "#E87088",
+  "successColor": "#E87088",
+  "borderColor": "#90B8D0",
+  "codeBg": "#284058",
+  "glassEffect": false,
+  "glowEffect": false
+}

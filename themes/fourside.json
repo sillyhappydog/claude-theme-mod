@@ -1,0 +1,16 @@
+{
+  "name": "Fourside",
+  "mode": "auto",
+  "bgMain": "#C8C0B0",
+  "bgSidebar": "#A89888",
+  "textPrimary": "#2A2418",
+  "textSecondary": "#484038",
+  "textMuted": "#706858",
+  "accentPrimary": "#C88070",
+  "inlineCodeText": "#C88070",
+  "successColor": "#C88070",
+  "borderColor": "#908878",
+  "codeBg": "#586860",
+  "glassEffect": false,
+  "glowEffect": false
+}

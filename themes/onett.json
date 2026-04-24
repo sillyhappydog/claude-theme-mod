@@ -1,0 +1,16 @@
+{
+  "name": "Onett",
+  "mode": "auto",
+  "bgMain": "#78B848",
+  "bgSidebar": "#5A8838",
+  "textPrimary": "#1A1808",
+  "textSecondary": "#2A2818",
+  "textMuted": "#486830",
+  "accentPrimary": "#C83830",
+  "inlineCodeText": "#C83830",
+  "successColor": "#C83830",
+  "borderColor": "#5A8838",
+  "codeBg": "#2A3818",
+  "glassEffect": false,
+  "glowEffect": false
+}

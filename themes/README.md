@@ -33,21 +33,39 @@ border-top: 1px solid rgba(0,255,65,0.15);
 box-shadow: 0 0 15px rgba(0,255,40,0.06), inset 0 1px 0 rgba(0,255,65,0.1);
 ```
 
-## Contributing themes
+## Summers (Light Theme Example)
+
+A warm, paper-like light theme. Demonstrates v0.6 **Theme Mode Independence** — this theme forces light mode regardless of Claude Desktop's Appearance setting.
+
+```bash
+cp themes/summers.json ~/.claude/theme.json
+```
+
+Glass and glow effects are disabled by default for light themes (they're designed for dark backgrounds).
+
+## Theme JSON Schema (v0.6)
 
 Create a JSON file with any subset of the supported keys:
 
-| Key | What it controls |
-|---|---|
-| bgMain | Main background |
-| bgSidebar | Sidebar background |
-| textPrimary | Primary text |
-| textSecondary | Secondary text |
-| textMuted | Muted/subtle text |
-| accentPrimary | Buttons, links, active elements |
-| inlineCodeText | Inline code text color |
-| successColor | Success indicators |
-| borderColor | All borders |
-| codeBg | Code block background (supports `rgba()`) |
+| Key | Type | What it controls |
+|---|---|---|
+| name | string | Theme display name (optional) |
+| mode | `"light"` \| `"dark"` \| `"auto"` | Force light/dark mode. Default: auto-detect from `bgMain` luminance |
+| bgMain | hex | Main background |
+| bgSidebar | hex | Sidebar background |
+| textPrimary | hex | Primary text |
+| textSecondary | hex | Secondary text |
+| textMuted | hex | Muted/subtle text |
+| accentPrimary | hex | Buttons, links, active elements |
+| inlineCodeText | hex | Inline code text color |
+| successColor | hex | Success indicators |
+| borderColor | hex | All borders |
+| codeBg | hex/rgba | Code block background (supports `rgba()`) |
+| glassEffect | boolean | Enable glass effect on code blocks. Default: `true` (dark), `false` (light) |
+| glowEffect | boolean | Enable glow on inline code. Default: `true` (dark), `false` (light) |
+
+### Mode Independence (v0.6)
+
+Prior to v0.6, themes "rode on" Claude Desktop's Appearance setting — a light theme looked broken if Desktop was set to Dark mode. Now `cdp_full_theme.js` forces the correct body class (`light`/`dark`) based on the theme, and a `MutationObserver` intercepts any attempt by the Appearance toggle to change it back. The theme is the single source of truth.
 
 Name your file descriptively (e.g. `dracula.json`, `nord.json`) and submit a PR.

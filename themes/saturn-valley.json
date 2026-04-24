@@ -1,0 +1,16 @@
+{
+  "name": "Saturn Valley",
+  "mode": "auto",
+  "bgMain": "#F8C8D0",
+  "bgSidebar": "#E0A0B0",
+  "textPrimary": "#382028",
+  "textSecondary": "#584048",
+  "textMuted": "#988088",
+  "accentPrimary": "#E85888",
+  "inlineCodeText": "#58C898",
+  "successColor": "#E85888",
+  "borderColor": "#D098A8",
+  "codeBg": "#483040",
+  "glassEffect": false,
+  "glowEffect": false
+}

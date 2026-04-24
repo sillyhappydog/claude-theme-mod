@@ -1,0 +1,16 @@
+{
+  "name": "Moonside",
+  "mode": "dark",
+  "bgMain": "#000000",
+  "bgSidebar": "#0a0014",
+  "textPrimary": "#E08820",
+  "textSecondary": "#FFFF00",
+  "textMuted": "#6630AA",
+  "accentPrimary": "#FF0088",
+  "inlineCodeText": "#FF0088",
+  "successColor": "#FF0088",
+  "borderColor": "#E08820",
+  "codeBg": "#3A2088",
+  "glassEffect": true,
+  "glowEffect": true
+}

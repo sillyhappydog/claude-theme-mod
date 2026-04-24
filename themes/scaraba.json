@@ -1,0 +1,16 @@
+{
+  "name": "Scaraba",
+  "mode": "auto",
+  "bgMain": "#D8B878",
+  "bgSidebar": "#B89048",
+  "textPrimary": "#281808",
+  "textSecondary": "#483820",
+  "textMuted": "#887050",
+  "accentPrimary": "#C05028",
+  "inlineCodeText": "#C05028",
+  "successColor": "#C05028",
+  "borderColor": "#A08048",
+  "codeBg": "#382810",
+  "glassEffect": false,
+  "glowEffect": false
+}

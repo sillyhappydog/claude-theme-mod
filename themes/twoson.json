@@ -1,0 +1,16 @@
+{
+  "name": "Twoson",
+  "mode": "auto",
+  "bgMain": "#E8A848",
+  "bgSidebar": "#C08030",
+  "textPrimary": "#281808",
+  "textSecondary": "#483018",
+  "textMuted": "#886838",
+  "accentPrimary": "#D05028",
+  "inlineCodeText": "#D05028",
+  "successColor": "#D05028",
+  "borderColor": "#C08030",
+  "codeBg": "#382008",
+  "glassEffect": false,
+  "glowEffect": false
+}

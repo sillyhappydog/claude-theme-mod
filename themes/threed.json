@@ -1,0 +1,16 @@
+{
+  "name": "Threed",
+  "mode": "auto",
+  "bgMain": "#283848",
+  "bgSidebar": "#182028",
+  "textPrimary": "#8898A8",
+  "textSecondary": "#6878A0",
+  "textMuted": "#485868",
+  "accentPrimary": "#70A830",
+  "inlineCodeText": "#70A830",
+  "successColor": "#70A830",
+  "borderColor": "#384858",
+  "codeBg": "#101820",
+  "glassEffect": true,
+  "glowEffect": true
+}

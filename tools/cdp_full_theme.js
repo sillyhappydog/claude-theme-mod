@@ -1,19 +1,15 @@
-// Full theme injection via CDP — does everything __themeApply would do
+// cdp_full_theme.js v0.7 — Refactored: CSS-only, no polling
+// All styling via CSS rules + CSS variables. No setInterval, no DOM iteration.
+// Only JS: one-time setup + MutationObserver for body class (mode independence).
 const WebSocket = require('ws');
 const fs = require('fs');
 const path = require('path');
 
+const CDP_PORT = process.env.CDP_PORT || 9222;
 const THEME_FILE = path.join(require('os').homedir(), '.claude', 'theme.json');
 const theme = JSON.parse(fs.readFileSync(THEME_FILE, 'utf-8').replace(/^\uFEFF/, ''));
 
-// Get target ID from command line or auto-detect
-async function getTargetId() {
-  const resp = await fetch('http://localhost:9222/json');
-  const targets = await resp.json();
-  const claude = targets.find(t => t.url.includes('claude.ai'));
-  if (!claude) throw new Error('No claude.ai target found');
-  return claude.id;
-}
+// ── Helpers ──────────────────────────────────────────────────────────
 
 function hexToHSL(hex) {
   const r = parseInt(hex.slice(1,3),16)/255;
@@ -32,6 +28,16 @@ function hexToHSL(hex) {
   }
   return { h: Math.round(h*360), s: Math.round(s*100), l: Math.round(l*100) };
 }
+
+function resolveMode(t) {
+  if (t.mode === 'light' || t.mode === 'dark') return t.mode;
+  return hexToHSL(t.bgMain || '#000000').l < 50 ? 'dark' : 'light';
+}
+
+const themeMode = resolveMode(theme);
+console.log(`Theme: "${theme.name || 'unnamed'}" | Mode: ${themeMode}`);
+
+// ── VAR_MAP ─────────────────────────────────────────────────────────
 
 const VAR_MAP = {
   bgMain:         [['--bg-000','hsl'],['--bg-400','hsl'],['--bg-500','hsl'],['--claude-background-color','hex']],
@@ -64,88 +70,235 @@ for (const [key, mappings] of Object.entries(VAR_MAP)) {
   }
 }
 
-const cs = hexToHSL(theme.bgMain || '#000000').l < 50 ? 'dark' : 'light';
+// Effect config
+const accentHex = theme.accentPrimary || theme.textPrimary || '#00FF41';
+const codeHex = theme.inlineCodeText || theme.textSecondary || '#FFB830';
+const glassEnabled = theme.glassEffect !== false && themeMode === 'dark';
+const glowEnabled = theme.glowEffect !== false && themeMode === 'dark';
 
-// Build the injection script
-let script = '(function(){var s=document.documentElement.style;';
-for (const [v, val] of pairs) {
-  script += `s.setProperty(${JSON.stringify(v)},${JSON.stringify(val)},'important');`;
+// ── Content injection script ────────────────────────────────────────
+
+function buildContentScript() {
+  const bgMainHSL = theme.bgMain ? hexToHSL(theme.bgMain) : null;
+  const bgSidebarHSL = theme.bgSidebar ? hexToHSL(theme.bgSidebar) : null;
+  const bgMain = theme.bgMain || '#000000';
+  const bgSidebar = theme.bgSidebar || bgMain;
+
+  // ── Base CSS rules (all styling via stylesheet, no inline iteration) ──
+  let css = '';
+
+  // Background overrides
+  if (bgSidebarHSL) css += `.bg-bg-100{background-color:hsl(${bgSidebarHSL.h} ${bgSidebarHSL.s}% ${bgSidebarHSL.l}%)!important}`;
+  if (bgMainHSL) css += `.bg-bg-000{background-color:hsl(${bgMainHSL.h} ${bgMainHSL.s}% ${bgMainHSL.l}%)!important}`;
+
+  // Inline code: remove border/bg (was el.style.setProperty in __themeFixEls)
+  css += '.standard-markdown code:not(pre code){border:none!important;background:transparent!important}';
+
+  // Code block pre transparency
+  css += 'pre.code-block__code,pre.code-block__code>code{background:transparent!important;background-color:transparent!important}';
+
+  // Code block wrapper bg
+  if (theme.codeBg) css += `.bg-bg-000\\/50{background-color:${theme.codeBg}!important;background:${theme.codeBg}!important}`;
+
+  // Desktop frame elements (was inline style in __themeFixEls)
+  css += `.dframe-content{background-color:${bgMain}!important}`;
+  css += `.dframe-sidebar{background-color:${bgSidebar}!important}`;
+
+  // ── Effects CSS rules ──
+  let cssEffects = '';
+
+  if (glassEnabled) {
+    const {r:ar, g:ag, b:ab} = hexToRgb(accentHex);
+    const cbg = theme.codeBg || bgMain;
+    cssEffects += `[class*="group/copy"]{`;
+    cssEffects += `background:linear-gradient(180deg,rgba(${ar},${ag},${ab},0.08) 0%,rgba(${ar},${ag},${ab},0.04) 100%),${cbg}!important;`;
+    cssEffects += `backdrop-filter:brightness(1.15)!important;-webkit-backdrop-filter:brightness(1.15)!important;`;
+    cssEffects += `border-top:1px solid rgba(${ar},${ag},${ab},0.15)!important;`;
+    cssEffects += `border-left:1px solid rgba(${ar},${ag},${ab},0.06)!important;`;
+    cssEffects += `border-right:1px solid rgba(${ar},${ag},${ab},0.04)!important;`;
+    cssEffects += `border-bottom:1px solid rgba(${ar},${ag},${ab},0.03)!important;`;
+    cssEffects += `box-shadow:0 0 15px rgba(${ar},${ag},${ab},0.06),inset 0 1px 0 rgba(${ar},${ag},${ab},0.1)!important}`;
+  }
+
+  if (glowEnabled) {
+    const {r:cr, g:cg, b:cb} = hexToRgb(codeHex);
+    cssEffects += `.standard-markdown code:not(pre code){color:${codeHex}!important;`;
+    cssEffects += `text-shadow:0 0 8px rgba(${cr},${cg},${cb},0.5),0 0 2px rgba(${cr},${cg},${cb},0.8)!important}`;
+  }
+
+  // Serialize for injection
+  const pairsJSON = JSON.stringify(pairs);
+  const modeJSON = JSON.stringify(themeMode);
+  const cssJSON = JSON.stringify(css);
+  const cssEffectsJSON = JSON.stringify(cssEffects);
+  const bgMainJSON = JSON.stringify(bgMain);
+
+  // ── Injection script: minimal JS, no polling ──
+  return `(function(){
+    var MODE = ${modeJSON};
+    var BG_MAIN = ${bgMainJSON};
+    var PAIRS = ${pairsJSON};
+    var CSS_RULES = ${cssJSON};
+    var CSS_EFFECTS = ${cssEffectsJSON};
+
+    // 1. Force body class
+    function forceBodyClass() {
+      if (!document.body) return;
+      var cl = document.body.classList;
+      if (MODE === 'dark') { cl.remove('light'); cl.add('dark'); }
+      else { cl.remove('dark'); cl.add('light'); }
+    }
+    forceBodyClass();
+
+    // 2. CSS variables on :root (one-time)
+    var s = document.documentElement.style;
+    for (var i = 0; i < PAIRS.length; i++) {
+      s.setProperty(PAIRS[i][0], PAIRS[i][1], 'important');
+    }
+    s.setProperty('color-scheme', MODE, 'important');
+    if (document.body) document.body.style.setProperty('background', BG_MAIN, 'important');
+
+    // 3. Style tags (all visual styling via CSS rules)
+    function setStyleTag(id, content) {
+      var el = document.getElementById(id);
+      if (!el) { el = document.createElement('style'); el.id = id; document.head.appendChild(el); }
+      el.textContent = content;
+    }
+    setStyleTag('__theme-override-styles', CSS_RULES);
+    setStyleTag('__theme-effects-styles', CSS_EFFECTS);
+
+    // 4. Mode interception (only observer, no polling)
+    // Fires only on body class attribute change — lightweight
+    if (window.__themeModeObs) window.__themeModeObs.disconnect();
+    window.__themeModeObs = new MutationObserver(function(mutations) {
+      for (var m = 0; m < mutations.length; m++) {
+        if (mutations[m].attributeName === 'class' && !document.body.classList.contains(MODE)) {
+          forceBodyClass();
+          for (var i = 0; i < PAIRS.length; i++) {
+            s.setProperty(PAIRS[i][0], PAIRS[i][1], 'important');
+          }
+          s.setProperty('color-scheme', MODE, 'important');
+        }
+      }
+    });
+    if (document.body) {
+      window.__themeModeObs.observe(document.body, { attributes: true, attributeFilter: ['class'] });
+    }
+
+    // 5. Cleanup legacy polling (from previous v0.6 injections)
+    if (window.__themeInterval) { clearInterval(window.__themeInterval); delete window.__themeInterval; }
+    if (window.__themeObs) { window.__themeObs.disconnect(); delete window.__themeObs; }
+
+    return 'v0.7 Content [' + MODE + '] glass:${glassEnabled} glow:${glowEnabled} (no polling)';
+  })()`;
 }
-script += `s.setProperty('color-scheme',${JSON.stringify(cs)},'important');`;
-if (theme.bgMain) script += `if(document.body)document.body.style.setProperty('background',${JSON.stringify(theme.bgMain)},'important');`;
 
-// Style tag
-const bgSidebarHSL = theme.bgSidebar ? hexToHSL(theme.bgSidebar) : null;
-const bgMainHSL = theme.bgMain ? hexToHSL(theme.bgMain) : null;
-let css = '';
-if (bgSidebarHSL) {
-  const h1 = `${bgSidebarHSL.h} ${bgSidebarHSL.s}% ${bgSidebarHSL.l}%`;
-  css += `.bg-bg-100{background-color:hsl(${h1})!important}`;
+// ── Shell injection script ──────────────────────────────────────────
+
+function buildShellScript() {
+  const bg = theme.bgMain || '#000000';
+  const text = theme.textPrimary || '#FFFFFF';
+  const modeJSON = JSON.stringify(themeMode);
+
+  // Shell CSS: override all backgrounds via rule instead of querySelectorAll('*')
+  const shellCss = `*{background-color:${bg}!important}`
+    + `body{color:${text}!important}`;
+
+  return `(function(){
+    var MODE = ${modeJSON};
+
+    // Body class
+    if (document.body) {
+      document.body.classList.remove(MODE === 'dark' ? 'light' : 'dark');
+      document.body.classList.add(MODE);
+    }
+
+    // CSS variables
+    var s = document.documentElement.style;
+    s.setProperty('--claude-background-color', ${JSON.stringify(bg)}, 'important');
+    s.setProperty('--claude-foreground-color', ${JSON.stringify(text)}, 'important');
+    s.setProperty('color-scheme', MODE, 'important');
+
+    // Style tag (replaces querySelectorAll('*') iteration)
+    var el = document.getElementById('__theme-shell-styles');
+    if (!el) { el = document.createElement('style'); el.id = '__theme-shell-styles'; document.head.appendChild(el); }
+    el.textContent = ${JSON.stringify(shellCss)};
+
+    // Mode observer
+    if (window.__shellModeObs) window.__shellModeObs.disconnect();
+    window.__shellModeObs = new MutationObserver(function() {
+      if (document.body && !document.body.classList.contains(MODE)) {
+        document.body.classList.remove(MODE === 'dark' ? 'light' : 'dark');
+        document.body.classList.add(MODE);
+      }
+    });
+    if (document.body) {
+      window.__shellModeObs.observe(document.body, { attributes: true, attributeFilter: ['class'] });
+    }
+
+    return 'v0.7 Shell [' + MODE + ']';
+  })()`;
 }
-if (bgMainHSL) {
-  const h0 = `${bgMainHSL.h} ${bgMainHSL.s}% ${bgMainHSL.l}%`;
-  css += `.bg-bg-000{background-color:hsl(${h0})!important}`;
+
+// ── hexToRgb (used by glass/glow CSS builders) ──────────────────────
+
+function hexToRgb(hex) {
+  return {
+    r: parseInt(hex.slice(1,3),16),
+    g: parseInt(hex.slice(3,5),16),
+    b: parseInt(hex.slice(5,7),16),
+  };
 }
-css += '.standard-markdown code:not(pre code){border:none!important;background:transparent!important}';
-css += 'pre.code-block__code,pre.code-block__code>code{background:transparent!important;background-color:transparent!important}';
-if (theme.codeBg) {
-  css += `.bg-bg-000\\/50{background-color:${theme.codeBg}!important;background:${theme.codeBg}!important}`;
+
+// ── CDP multi-target injection ──────────────────────────────────────
+
+async function getTargets() {
+  const resp = await fetch(`http://localhost:${CDP_PORT}/json`);
+  return await resp.json();
 }
 
-script += `var _sid='__theme-override-styles';var _sel=document.getElementById(_sid);`;
-script += `if(!_sel){_sel=document.createElement('style');_sel.id=_sid;document.head.appendChild(_sel);}`;
-script += `_sel.textContent=${JSON.stringify(css)};`;
-
-// __themeFixEls equivalent + interval + observer
-script += `function __themeFixEls(){`;
-script += `document.querySelectorAll('code').forEach(function(c){if(!c.closest('pre')){c.style.setProperty('border','none','important');c.style.setProperty('background','transparent','important');}});`;
-script += `var dc=document.querySelector('.dframe-content');if(dc)dc.style.setProperty('background-color',${JSON.stringify(theme.bgMain||'#0A0A0A')},'important');`;
-script += `var ds=document.querySelector('.dframe-sidebar');if(ds)ds.style.setProperty('background-color',${JSON.stringify(theme.bgSidebar||'#050505')},'important');`;
-if (theme.codeBg) {
-  script += `document.querySelectorAll('pre.code-block__code').forEach(function(p){p.style.setProperty('background','transparent','important');var c=p.querySelector('code');if(c)c.style.setProperty('background','transparent','important');});`;
+function injectViaWS(targetId, script, label) {
+  return new Promise((resolve, reject) => {
+    const ws = new WebSocket(`ws://localhost:${CDP_PORT}/devtools/page/${targetId}`);
+    const timer = setTimeout(() => { ws.close(); reject(new Error(`${label}: timeout`)); }, 10000);
+    ws.on('open', () => {
+      ws.send(JSON.stringify({ id: 1, method: 'Runtime.evaluate', params: { expression: script } }));
+    });
+    ws.on('message', (data) => {
+      const r = JSON.parse(data.toString());
+      if (r.id === 1) {
+        clearTimeout(timer);
+        const err = r.result?.exceptionDetails;
+        if (err) console.error(`${label}: EXCEPTION`, JSON.stringify(err, null, 2));
+        else console.log(`${label}: ${r.result?.result?.value}`);
+        ws.close();
+        resolve(r.result?.result?.value);
+      }
+    });
+    ws.on('error', (e) => { clearTimeout(timer); reject(new Error(`${label}: ${e.message}`)); });
+  });
 }
-script += `}__themeFixEls();`;
-script += `if(window.__themeInterval)clearInterval(window.__themeInterval);window.__themeInterval=setInterval(__themeFixEls,2000);`;
-script += `if(window.__themeObs)window.__themeObs.disconnect();window.__themeObs=new MutationObserver(__themeFixEls);window.__themeObs.observe(document.documentElement,{childList:true,subtree:true});`;
-
-// Desktop frame elements — dframe-content is the main culprit for gray background
-script += `var dc=document.querySelector('.dframe-content');if(dc)dc.style.setProperty('background-color',${JSON.stringify(theme.bgMain||'#0A0A0A')},'important');`;
-script += `var ds=document.querySelector('.dframe-sidebar');if(ds)ds.style.setProperty('background-color',${JSON.stringify(theme.bgSidebar||theme.bgMain||'#050505')},'important');`;
-
-// Glass effect
-script += `document.querySelectorAll('[class*="group/copy"]').forEach(function(el){`;
-script += `el.style.setProperty('background','linear-gradient(180deg, rgba(0,255,40,0.08) 0%, rgba(0,255,40,0.04) 100%)','important');`;
-script += `el.style.setProperty('backdrop-filter','brightness(1.15)','important');`;
-script += `el.style.setProperty('-webkit-backdrop-filter','brightness(1.15)','important');`;
-script += `el.style.setProperty('border-top','1px solid rgba(0,255,65,0.15)','important');`;
-script += `el.style.setProperty('border-left','1px solid rgba(0,255,65,0.06)','important');`;
-script += `el.style.setProperty('border-right','1px solid rgba(0,255,65,0.04)','important');`;
-script += `el.style.setProperty('border-bottom','1px solid rgba(0,255,65,0.03)','important');`;
-script += `el.style.setProperty('box-shadow','0 0 15px rgba(0,255,40,0.06), inset 0 1px 0 rgba(0,255,65,0.1)','important');`;
-script += `});`;
-
-// Gold inline code glow
-script += `document.querySelectorAll('code:not(pre code)').forEach(function(c){`;
-script += `c.style.setProperty('color','#FFB830','important');`;
-script += `c.style.setProperty('text-shadow','0 0 8px rgba(255,184,48,0.5), 0 0 2px rgba(255,184,48,0.8)','important');`;
-script += `});`;
-
-script += `return 'Full theme + glass + gold applied';})()`;
 
 (async () => {
-  const targetId = await getTargetId();
-  console.log('Target:', targetId);
-  const ws = new WebSocket(`ws://localhost:9222/devtools/page/${targetId}`);
-  ws.on('open', () => {
-    ws.send(JSON.stringify({ id: 1, method: 'Runtime.evaluate', params: { expression: script } }));
-  });
-  ws.on('message', (data) => {
-    const r = JSON.parse(data.toString());
-    if (r.id === 1) {
-      console.log(r.result?.result?.value || JSON.stringify(r, null, 2));
-      ws.close();
+  try {
+    const targets = await getTargets();
+    const shell = targets.find(t => t.url.includes('index.html'));
+    const content = targets.find(t => t.url.includes('claude.ai'));
+
+    if (!shell && !content) {
+      console.error('No targets found. Is Claude Desktop running with --remote-debugging-port=9222?');
+      process.exit(1);
     }
-  });
-  ws.on('error', (e) => { console.error('WS error:', e.message); process.exit(1); });
-  setTimeout(() => { console.error('Timeout'); process.exit(1); }, 10000);
+
+    if (shell) await injectViaWS(shell.id, buildShellScript(), 'Shell');
+    else console.warn('Shell target not found — skipping');
+
+    if (content) await injectViaWS(content.id, buildContentScript(), 'Content');
+    else console.warn('Content target not found — skipping');
+
+  } catch (e) {
+    console.error('Fatal:', e.message);
+    process.exit(1);
+  }
+  setTimeout(() => process.exit(0), 500);
 })();
