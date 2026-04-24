@@ -10,7 +10,7 @@
 //   Point C: GLt() background color function → reads theme.json
 //   Point D: QyA() BrowserWindow initial bg → reads theme.json
 //   Point E: setBackgroundColor → reads theme.json
-//   Point F: argv guard patched to allow --remote-debugging-port (CDP)
+//   Point F: argv guard patched to allow --remote-debugging-port (CDP) — scans all build JS files
 //   Shell:   index.html body class + override CSS
 //
 // Idempotent: safe to run multiple times. Skips if already injected.
@@ -391,29 +391,36 @@ async function main() {
     }
 
     // Point F: patch argv guard to allow --remote-debugging-port
-    const rdpIdx = content.indexOf('"remote-debugging-port"');
-    if (rdpIdx !== -1) {
-        // Walk backwards to find "function XXX(t){"
+    // The guard may be in index.js or index.pre.js — scan all build JS files
+    const buildDir = path.join(workDir, '.vite', 'build');
+    const buildFiles = fs.readdirSync(buildDir).filter(f => f.endsWith('.js'));
+    let argvPatched = false;
+    for (const bf of buildFiles) {
+        const bfPath = path.join(buildDir, bf);
+        let bfContent = bf === 'index.js' ? content : fs.readFileSync(bfPath, 'utf8');
+        const rdpIdx = bfContent.indexOf('"remote-debugging-port"');
+        if (rdpIdx === -1) continue;
         const searchStart = Math.max(0, rdpIdx - 200);
-        const chunk = content.substring(searchStart, rdpIdx);
+        const chunk = bfContent.substring(searchStart, rdpIdx);
         const funcMatch = chunk.match(/function (\w+)\(t\)\{return t\.some/);
-        if (funcMatch) {
-            const funcName = funcMatch[1];
-            // Find the end of this function: after "remote-debugging-pipe" look for "})}""
-            const pipeIdx = content.indexOf('"remote-debugging-pipe"', rdpIdx);
-            const endIdx = pipeIdx !== -1 ? content.indexOf('})}', pipeIdx) : -1;
-            if (endIdx !== -1) {
-                const fullFunc = content.substring(searchStart + funcMatch.index, endIdx + 3);
-                content = content.replace(fullFunc, 'function ' + funcName + '(t){return false}');
-                console.log('  [Point F] Patched argv guard ' + funcName + '() (CDP enabled)');
-            } else {
-                console.log('  [Point F] Could not find argv guard function end');
-            }
+        if (!funcMatch) { console.log('  [Point F] Found string in ' + bf + ' but could not locate function start'); continue; }
+        const funcName = funcMatch[1];
+        const pipeIdx = bfContent.indexOf('"remote-debugging-pipe"', rdpIdx);
+        const endIdx = pipeIdx !== -1 ? bfContent.indexOf('})}', pipeIdx) : -1;
+        if (endIdx === -1) { console.log('  [Point F] Found ' + funcName + '() in ' + bf + ' but could not find function end'); continue; }
+        const fullFunc = bfContent.substring(searchStart + funcMatch.index, endIdx + 3);
+        bfContent = bfContent.replace(fullFunc, 'function ' + funcName + '(t){return false}');
+        if (bf === 'index.js') {
+            content = bfContent; // will be written below
         } else {
-            console.log('  [Point F] Could not find argv guard function start');
+            fs.writeFileSync(bfPath, bfContent);
         }
-    } else {
-        console.log('  [Point F] "remote-debugging-port" not found in index.js');
+        console.log('  [Point F] Patched argv guard ' + funcName + '() in ' + bf + ' (CDP enabled)');
+        argvPatched = true;
+        break;
+    }
+    if (!argvPatched) {
+        console.log('  [Point F] "remote-debugging-port" not found in any build JS file');
     }
 
     fs.writeFileSync(indexPath, content);
