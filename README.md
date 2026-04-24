@@ -22,9 +22,9 @@ Claude Desktop's Electron build has three security mechanisms that prevent modif
 | Electron Asar Integrity | asar SHA256 hash embedded in the Electron binary | All builds | `@electron/fuses`: set `EnableEmbeddedAsarIntegrityValidation` to OFF |
 | Electron Fuse: InspectArgs | Blocks `--inspect` / `--inspect-brk` flags | All builds | `@electron/fuses`: set `EnableNodeCliInspectArguments` to ON |
 
-**Shortest path**: Install the Squirrel build → flip 2 fuses → replace `app.asar`. That's it.
+**Shortest path**: Install the Squirrel build → flip 2 fuses → run the injector → drop in a theme JSON. That's it.
 
-See [docs/IMPLEMENTATION_LOG.md](docs/IMPLEMENTATION_LOG.md) for the full story — every attempt, every failure, and what finally worked.
+See [docs/IMPLEMENTATION_LOG.md](docs/IMPLEMENTATION_LOG.md) and [docs/IMPLEMENTATION_LOG_v0.2.md](docs/IMPLEMENTATION_LOG_v0.2.md) for the full story — every attempt, every failure, and what finally worked.
 
 ## Quick Start
 
@@ -34,60 +34,72 @@ See [docs/IMPLEMENTATION_LOG.md](docs/IMPLEMENTATION_LOG.md) for the full story 
 - Node.js (v18+)
 - Claude Desktop installed via `winget install Anthropic.Claude` (Squirrel build, NOT MSIX)
 
-### Step 1: Flip the fuses
+### Step 1: Install dependencies and flip fuses
 
 ```bash
-cd tools
-npm install @electron/fuses
+cd tools && npm install @electron/fuses
 node flip_fuses.js
 ```
 
 This disables asar integrity validation and enables inspector args. Run `node read_fuses.js` to verify.
 
-### Step 2: Modify app.asar
-
-Extract the asar:
+### Step 2: Inject the theme loader
 
 ```bash
-npm install @electron/asar
-npx @electron/asar extract "%LOCALAPPDATA%\AnthropicClaude\app-<version>\resources\app.asar" app_extracted
+cd .. && npm install @electron/asar
+node tools/inject_theme_loader.js
 ```
 
-Find the CSS injection points. The file names change per version, so search:
+This extracts the asar, patches the Electron main process with the theme loader, repacks, and deploys. One command, fully automated. Claude Desktop will restart.
 
-```bash
-# Find where shell/titlebar colors are defined
-grep -r "--claude-background-color" app_extracted/ --include="*.html" --include="*.js" -l
+### Step 3: Create your theme
 
-# Find where CSS is injected into the main view
-grep -r "insertCSS" app_extracted/.vite/build/ --include="*.js" -l
+Save a theme JSON to `%USERPROFILE%\.claude\theme.json`:
+
+```json
+{
+  "name": "Matrix",
+  "bgMain": "#0A0A0A",
+  "bgSidebar": "#050505",
+  "textPrimary": "#00FF41",
+  "textSecondary": "#00CC33",
+  "textMuted": "#008F26",
+  "accentPrimary": "#00FF41",
+  "borderColor": "#0A3A0A",
+  "codeBg": "#020202",
+  "codeText": "#00FF41",
+  "headingColor": "#00FF41",
+  "boldColor": "#66FFB2",
+  "linkColor": "#33FF77",
+  "selectionBg": "#00FF4144"
+}
 ```
 
-Typically you'll find:
-- **`index.html`** — shell background and titlebar CSS variables
-- **A JS chunk in `.vite/build/`** — contains an `insertCSS(...)` call that applies CSS to the main content area
+Theme applies automatically on launch. **Edit the file while Claude is running — changes are picked up within ~1 second.** Delete the file to revert to default.
 
-Use **Theme Studio** (below) to design your theme and export the CSS values, then apply them to these files. Theme Studio generates CSS targeting Claude's HSL variable system (`--bg-000`, `--text-100`, `--accent-brand`, etc.).
+Use **Theme Studio** (below) to design themes visually and export JSON.
 
-Repack:
+### Matrix Theme
 
-```bash
-npx @electron/asar pack app_extracted app_modded.asar
-```
+![Matrix Theme](screenshots/matrix.png)
 
-> **Tip**: If you're using Claude Code, you can say "extract the asar, find the CSS injection points, apply the Moonside theme from Theme Studio, and repack." It can handle the grep + edit + pack workflow.
+### Restore
 
-### Step 3: Deploy
-
-```powershell
-.\tools\deploy.ps1 -AsarPath .\app_modded.asar
-```
-
-To restore the original:
+To undo all modifications and restore the original Claude Desktop:
 
 ```powershell
 .\tools\restore.ps1
 ```
+
+## How It Works
+
+The injector patches `index.js` — the Electron **main process** entry point. This is the privileged side: full Node.js access, no sandbox, no context isolation.
+
+1. **On startup**: reads `~/.claude/theme.json`, converts hex colors to CSS variables (HSL), and calls `webContents.insertCSS()` on the claude.ai renderer
+2. **Hot-reload**: `fs.watchFile()` monitors `theme.json` for changes and re-applies CSS within ~1 second
+3. **On delete**: removes the injected CSS, restoring the default theme
+
+Why not inject into the renderer (`index.html` or the preload script)? Because Claude Desktop's renderer is sandboxed — no `require('fs')`, no `process.env`, and `mainView.js` (the preload) controls Desktop feature detection via `contextBridge`. Touching it breaks Desktop-specific features like Cowork and MCP integrations. The main process has none of these restrictions.
 
 ## Theme Studio
 
@@ -114,15 +126,20 @@ Theme Studio also supports **Import/Export** of theme JSON, so you can share pre
 ```
 claude-desktop-modding/
 ├── docs/
-│   ├── IMPLEMENTATION_LOG.md    # Full reverse-engineering narrative
-│   └── SQUIRREL_INSTALLER.md    # Squirrel build URLs + SHA256 hashes
+│   ├── IMPLEMENTATION_LOG.md       # v0.1 reverse-engineering narrative
+│   ├── IMPLEMENTATION_LOG_v0.2.md  # v0.2/v0.3 development log
+│   └── SQUIRREL_INSTALLER.md      # Squirrel build URLs + SHA256 hashes
 ├── tools/
-│   ├── flip_fuses.js            # Flip Electron fuses (auto-detects version)
-│   ├── read_fuses.js            # Read current fuse state
-│   ├── deploy.ps1               # Deploy modified asar (Squirrel build)
-│   └── restore.ps1              # Restore original asar
-└── theme-studio/
-    └── claude-desktop-theme-customizer.jsx  # Theme designer (Claude artifact)
+│   ├── inject_theme_loader.js      # v0.3 theme loader injector (main tool)
+│   ├── flip_fuses.js               # Flip Electron fuses (auto-detects version)
+│   ├── read_fuses.js               # Read current fuse state
+│   ├── launch_cdp.ps1              # Launch Claude with Chrome DevTools Protocol
+│   ├── deploy.ps1                  # Deploy modified asar (Squirrel build)
+│   └── restore.ps1                 # Restore original asar
+├── theme-studio/
+│   └── claude-desktop-theme-customizer.jsx  # Theme designer (Claude artifact)
+└── screenshots/
+    └── matrix.png                  # Matrix theme screenshot
 ```
 
 ## Caveats

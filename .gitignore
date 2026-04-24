@@ -5,6 +5,8 @@ node_modules/
 .idea/
 *.backup
 app_*/
+package.json
+package-lock.json
 TASK_*.md
 PROMPT_*.md
 PROMPT_*.txt

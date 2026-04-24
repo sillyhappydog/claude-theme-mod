@@ -40,6 +40,12 @@ When you build it yourself from documented steps, you can verify every change. W
 - **DON'T** download pre-built asar files from untrusted sources
 - **DON'T** run fuse-flipping scripts you haven't read
 
+## Theme JSON Safety
+
+Theme JSON values are validated before use. Only valid hex color strings (`#RGB`, `#RRGGBB`, `#RRGGBBAA`) are accepted. Invalid values are silently ignored. This prevents CSS injection attacks via malformed color values.
+
+When using themes shared by others, inspect the JSON before saving it to `~/.claude/theme.json`. All values should be hex color codes — nothing else.
+
 ## Fuse modification and code signing
 
 Flipping Electron fuses is a binary patch that invalidates the application's code signature. This is an intentional and expected consequence — Electron fuses exist precisely to allow or restrict capabilities at the binary level. However, an unsigned or invalidly-signed binary may trigger warnings from security software.
