@@ -9,6 +9,7 @@ package.json
 package-lock.json
 TASK_*.md
 PROMPT_*.md
+!PROMPT_FOR_CLAUDE_CODE.md
 PROMPT_*.txt
 HANDOFF_*.md
 CODEX_TASK.md
