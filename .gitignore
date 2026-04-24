@@ -11,3 +11,7 @@ TASK_*.md
 PROMPT_*.md
 PROMPT_*.txt
 HANDOFF_*.md
+CODEX_TASK.md
+_dump*.txt
+_wsc.txt
+window-shared-backup.css
