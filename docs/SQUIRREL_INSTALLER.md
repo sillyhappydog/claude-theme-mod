@@ -55,6 +55,18 @@ https://api.anthropic.com/api/desktop/win32/x64/squirrel/update/RELEASES
 4. Launch with --remote-debugging-port=9222
 5. node cdp_full_theme.js
 
+## Disable auto-update
+
+Rename Update.exe to prevent Squirrel from checking for updates:
+```powershell
+Rename-Item "$env:LOCALAPPDATA\AnthropicClaude\Update.exe" "Update.exe.disabled"
+```
+
+To re-enable:
+```powershell
+Rename-Item "$env:LOCALAPPDATA\AnthropicClaude\Update.exe.disabled" "Update.exe"
+```
+
 ## Version history / auto-update flow
 ```
 v1.3883.0 (initial Squirrel install via winget)
