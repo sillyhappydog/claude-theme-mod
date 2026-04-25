@@ -1,0 +1,16 @@
+{
+  "name": "Arizona Iced Tea",
+  "mode": "light",
+  "bgMain": "#D4F1EC",
+  "bgSidebar": "#A8E0D6",
+  "textPrimary": "#1A3A35",
+  "textSecondary": "#2D5A52",
+  "textMuted": "#5A8A80",
+  "accentPrimary": "#D4688A",
+  "inlineCodeText": "#C25A78",
+  "successColor": "#D4688A",
+  "borderColor": "#88C8BA",
+  "codeBg": "#1A3A35",
+  "glassEffect": false,
+  "glowEffect": false
+}

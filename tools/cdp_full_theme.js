@@ -87,6 +87,13 @@ function buildContentScript() {
   // ── Base CSS rules (all styling via stylesheet, no inline iteration) ──
   let css = '';
 
+  // Media query override: force theme vars in BOTH light and dark prefers-color-scheme
+  // Electron's nativeTheme changes prefers-color-scheme, which Tailwind @media rules respond to.
+  // We must override in both media queries to prevent Appearance toggle from changing colors.
+  const varBlock = pairs.map(p => `${p[0]}:${p[1]}!important`).join(';');
+  css += `@media(prefers-color-scheme:dark){:root{${varBlock};color-scheme:${themeMode}!important}}`;
+  css += `@media(prefers-color-scheme:light){:root{${varBlock};color-scheme:${themeMode}!important}}`;
+
   // Background overrides
   if (bgSidebarHSL) css += `.bg-bg-100{background-color:hsl(${bgSidebarHSL.h} ${bgSidebarHSL.s}% ${bgSidebarHSL.l}%)!important}`;
   if (bgMainHSL) css += `.bg-bg-000{background-color:hsl(${bgMainHSL.h} ${bgMainHSL.s}% ${bgMainHSL.l}%)!important}`;
@@ -141,14 +148,21 @@ function buildContentScript() {
     var CSS_RULES = ${cssJSON};
     var CSS_EFFECTS = ${cssEffectsJSON};
 
-    // 1. Force body class
-    function forceBodyClass() {
-      if (!document.body) return;
-      var cl = document.body.classList;
-      if (MODE === 'dark') { cl.remove('light'); cl.add('dark'); }
-      else { cl.remove('dark'); cl.add('light'); }
+    // 1. Force mode on all relevant attributes
+    function forceMode() {
+      // body class: light/dark
+      if (document.body) {
+        var cl = document.body.classList;
+        if (MODE === 'dark') { cl.remove('light'); cl.add('dark'); }
+        else { cl.remove('dark'); cl.add('light'); }
+      }
+      // html data-mode: the REAL dark mode switch for Content
+      var dm = document.documentElement.getAttribute('data-mode');
+      if (dm !== MODE) {
+        document.documentElement.setAttribute('data-mode', MODE);
+      }
     }
-    forceBodyClass();
+    forceMode();
 
     // 2. CSS variables on :root (one-time)
     var s = document.documentElement.style;
@@ -167,17 +181,46 @@ function buildContentScript() {
     setStyleTag('__theme-override-styles', CSS_RULES);
     setStyleTag('__theme-effects-styles', CSS_EFFECTS);
 
-    // 4. Mode interception (only observer, no polling)
-    // Fires only on body class attribute change — lightweight
+    // 4. Mode interception — watch data-mode on <html> AND class on <body>
+    // Appearance toggle sets: <html data-mode="dark"> + body class changes
+    // Both must be intercepted and forced back to theme mode
+    function reapplyAll() {
+      forceMode();
+      for (var i = 0; i < PAIRS.length; i++) {
+        s.setProperty(PAIRS[i][0], PAIRS[i][1], 'important');
+      }
+      s.setProperty('color-scheme', MODE, 'important');
+    }
+
+    // 4a. Watch <html> for data-mode attribute changes (PRIMARY dark mode switch)
+    if (window.__themeHtmlObs) window.__themeHtmlObs.disconnect();
+    window.__themeHtmlObs = new MutationObserver(function(mutations) {
+      for (var m = 0; m < mutations.length; m++) {
+        if (mutations[m].attributeName === 'data-mode') {
+          var current = document.documentElement.getAttribute('data-mode');
+          if (current !== MODE) {
+            reapplyAll();
+          }
+        }
+        if (mutations[m].attributeName === 'style') {
+          // CSS variables may have been overwritten
+          var bg = s.getPropertyValue(PAIRS[0][0]);
+          if (bg !== PAIRS[0][1]) {
+            reapplyAll();
+          }
+        }
+      }
+    });
+    window.__themeHtmlObs.observe(document.documentElement, {
+      attributes: true, attributeFilter: ['data-mode', 'style']
+    });
+
+    // 4b. Watch <body> for class changes (secondary)
     if (window.__themeModeObs) window.__themeModeObs.disconnect();
     window.__themeModeObs = new MutationObserver(function(mutations) {
       for (var m = 0; m < mutations.length; m++) {
         if (mutations[m].attributeName === 'class' && !document.body.classList.contains(MODE)) {
-          forceBodyClass();
-          for (var i = 0; i < PAIRS.length; i++) {
-            s.setProperty(PAIRS[i][0], PAIRS[i][1], 'important');
-          }
-          s.setProperty('color-scheme', MODE, 'important');
+          reapplyAll();
         }
       }
     });
@@ -207,11 +250,19 @@ function buildShellScript() {
   return `(function(){
     var MODE = ${modeJSON};
 
-    // Body class
-    if (document.body) {
-      document.body.classList.remove(MODE === 'dark' ? 'light' : 'dark');
-      document.body.classList.add(MODE);
+    // Force body class: light/dark AND darkTheme/lightTheme
+    function forceShellMode() {
+      if (!document.body) return;
+      var cl = document.body.classList;
+      if (MODE === 'dark') {
+        cl.remove('light'); cl.add('dark');
+        cl.remove('lightTheme'); cl.add('darkTheme');
+      } else {
+        cl.remove('dark'); cl.add('light');
+        cl.remove('darkTheme'); cl.add('lightTheme');
+      }
     }
+    forceShellMode();
 
     // CSS variables
     var s = document.documentElement.style;
@@ -224,13 +275,16 @@ function buildShellScript() {
     if (!el) { el = document.createElement('style'); el.id = '__theme-shell-styles'; document.head.appendChild(el); }
     el.textContent = ${JSON.stringify(shellCss)};
 
-    // Mode observer
+    // Mode observer — catch darkTheme/lightTheme AND dark/light class changes
     if (window.__shellModeObs) window.__shellModeObs.disconnect();
     window.__shellModeObs = new MutationObserver(function() {
-      if (document.body && !document.body.classList.contains(MODE)) {
-        document.body.classList.remove(MODE === 'dark' ? 'light' : 'dark');
-        document.body.classList.add(MODE);
-      }
+      if (!document.body) return;
+      var cl = document.body.classList;
+      var needsFix = false;
+      if (MODE === 'light' && cl.contains('darkTheme')) needsFix = true;
+      if (MODE === 'dark' && cl.contains('lightTheme')) needsFix = true;
+      if (!cl.contains(MODE)) needsFix = true;
+      if (needsFix) forceShellMode();
     });
     if (document.body) {
       window.__shellModeObs.observe(document.body, { attributes: true, attributeFilter: ['class'] });
