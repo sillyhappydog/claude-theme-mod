@@ -19,11 +19,9 @@ cp themes/matrix.json ~/.claude/theme.json
 - **Code block background** uses `rgba(0,255,10,0.05)` — a 5% translucent green. This creates a subtle glass-panel effect where code blocks feel like they float above the background rather than being painted on it.
 - **Border color** (`#0A3A0A`) is dark green, barely visible. Borders exist to structure, not to decorate.
 
-### Going further: glass effect (CDP)
+### Going further: glass effect
 
-The screenshot above includes a translucent glass effect on code blocks that goes beyond what `theme.json` can express. This uses CSS `backdrop-filter` and `linear-gradient`, injected via Chrome DevTools Protocol.
-
-If you want this level of customization, see the [CDP Access](../README.md#cdp-access-advanced) section in the main README. The key properties:
+The screenshot above includes a translucent glass effect on code blocks that goes beyond what `theme.json` can express. This uses CSS `backdrop-filter` and `linear-gradient`, applied by `cdp_full_theme.js` when `glassEffect` is enabled in the theme.
 
 ```css
 /* Applied to code block wrappers (.group/copy elements) */
@@ -35,7 +33,7 @@ box-shadow: 0 0 15px rgba(0,255,40,0.06), inset 0 1px 0 rgba(0,255,65,0.1);
 
 ## Summers (Light Theme Example)
 
-A warm, paper-like light theme. Demonstrates v0.6 **Theme Mode Independence** — this theme forces light mode regardless of Claude Desktop's Appearance setting.
+A warm, paper-like light theme. Demonstrates **Theme Mode Independence** — this theme forces light mode regardless of Claude Desktop's Appearance setting.
 
 ```bash
 cp themes/summers.json ~/.claude/theme.json
@@ -43,7 +41,7 @@ cp themes/summers.json ~/.claude/theme.json
 
 Glass and glow effects are disabled by default for light themes (they're designed for dark backgrounds).
 
-## Theme JSON Schema (v0.6)
+## Theme JSON Schema
 
 Create a JSON file with any subset of the supported keys:
 
@@ -64,8 +62,8 @@ Create a JSON file with any subset of the supported keys:
 | glassEffect | boolean | Enable glass effect on code blocks. Default: `true` (dark), `false` (light) |
 | glowEffect | boolean | Enable glow on inline code. Default: `true` (dark), `false` (light) |
 
-### Mode Independence (v0.6)
+### Mode Independence
 
-Prior to v0.6, themes "rode on" Claude Desktop's Appearance setting — a light theme looked broken if Desktop was set to Dark mode. Now `cdp_full_theme.js` forces the correct body class (`light`/`dark`) based on the theme, and a `MutationObserver` intercepts any attempt by the Appearance toggle to change it back. The theme is the single source of truth.
+The theme is the single source of truth for light/dark mode. `cdp_full_theme.js` forces the correct body class and intercepts any attempt to change it back. The Appearance toggle in Settings has no effect.
 
 Name your file descriptively (e.g. `dracula.json`, `nord.json`) and submit a PR.
