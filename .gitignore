@@ -1,41 +1,35 @@
+# Build artifacts
 *.exe
 *.asar
-*.asar.unpacked/
 node_modules/
+
+# IDE
 .idea/
-*.backup
+
+# Extracted asar working directories
 app_*/
+
+# Package metadata (not needed for end users)
 package.json
 package-lock.json
+
+# Internal workflow files
 TASK_*.md
-PROMPT_*.md
-!PROMPT_FOR_CLAUDE_CODE.md
-PROMPT_*.txt
 HANDOFF_*.md
 CODEX_TASK.md
+PROMPT_*.md
+PROMPT_*.txt
+!PROMPT_FOR_CLAUDE_CODE.md
+
+# Diagnostic/experimental scripts (not part of the release)
+tools/_cdp_*.js
+tools/_fix_*.js
+tools/_patch_hardcode.js
+tools/cdp_*.js
+!tools/cdp_full_theme.js
+
+# Temporary files
+*.backup
 _dump*.txt
 _wsc.txt
-window-shared-backup.css
-
-# Experimental/diagnostic CDP tools
-tools/_cdp_check.js
-tools/cdp_chatbg.js
-tools/cdp_check_v05.js
-tools/cdp_deep_scan.js
-tools/cdp_dframe_fix.js
-tools/cdp_diag.js
-tools/cdp_diag_shell.js
-tools/cdp_fix_all.js
-tools/cdp_glass.js
-tools/cdp_glass2.js
-tools/cdp_gold.js
-tools/cdp_header_fix.js
-tools/cdp_neon.js
-tools/cdp_neon2.js
-tools/cdp_overlap.js
-tools/cdp_overlap2.js
-tools/cdp_shell_fix.js
-tools/cdp_shell_theme.js
-tools/cdp_topbar.js
-tools/cdp_verify.js
 _diag_check/
