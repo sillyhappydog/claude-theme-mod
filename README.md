@@ -1,6 +1,7 @@
 # claude-desktop-modding
 
-![What if I told you... you can create your own theme in Claude Desktop](screenshots/morpheus.jpg)&gt; \*\*For humans\*\*: You don't have to do any of this manually. Paste [`PROMPT_FOR_CLAUDE_CODE.md`](PROMPT_FOR_CLAUDE_CODE.md) into Claude Code and say "do this." It will handle the rest.
+![What if I told you... you can create your own theme in Claude Desktop](screenshots/morpheus.jpg)  
+\*\*For humans\*\*: You don't have to do any of this manually. Paste [`PROMPT_FOR_CLAUDE_CODE.md`](PROMPT_FOR_CLAUDE_CODE.md) into Claude Code and say "do this." It will handle the rest.
 
 > What if I told you... flipping 2 Electron Fuses lets you theme any Electron app.
 
