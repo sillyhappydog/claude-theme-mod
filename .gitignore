@@ -21,3 +21,5 @@ PROMPT_*.txt
 # Temporary files
 *.backup
 _dump*.txt
+
+CLAUDE.md
