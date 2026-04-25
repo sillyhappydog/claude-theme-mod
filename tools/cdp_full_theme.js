@@ -111,6 +111,22 @@ function buildContentScript() {
   css += `.dframe-content{background-color:${bgMain}!important}`;
   css += `.dframe-sidebar{background-color:${bgSidebar}!important}`;
 
+  // Disclaimer bar ("Claude is AI and can make mistakes") — uses bg-bg-100 (sidebar color), force to bgMain
+  css += `.text-center.text-xs.py-2.bg-bg-100{background-color:${bgMain}!important}`;
+
+  // Title/nav bar strip — df-pill-indicator and any remaining header elements
+  css += `.df-pill-indicator{background-color:${bgMain}!important}`;
+
+  // Gradient fade overrides — Tailwind's from-bg-100/via-bg-100 uses default #FDFDFC
+  // Override background-image directly since Tailwind's internal variable chain is too complex
+  if (bgMainHSL) {
+    const hslMain = `hsl(${bgMainHSL.h} ${bgMainHSL.s}% ${bgMainHSL.l}%)`;
+    // Thinking "Show more" fade (top-to-bottom)
+    css += `[class*="bg-gradient-to-b"][class*="from-bg-100"]{background-image:linear-gradient(to bottom,${hslMain} 50%,${hslMain.replace(')',',0.75)')} 75%,${hslMain.replace(')',',0)')})!important}`;
+    // Bottom fade (bottom-to-top) 
+    css += `[class*="bg-gradient-to-t"][class*="from-bg-100"]{background-image:linear-gradient(to top,${hslMain},transparent)!important}`;
+  }
+
   // ── Effects CSS rules ──
   let cssEffects = '';
 
@@ -228,7 +244,28 @@ function buildContentScript() {
       window.__themeModeObs.observe(document.body, { attributes: true, attributeFilter: ['class'] });
     }
 
-    // 5. Cleanup legacy polling (from previous v0.6 injections)
+    // 5. Gradient inline overrides — Tailwind's gradient chain ignores CSS rule !important
+    // Must use inline style.setProperty on each element
+    var HSL_MAIN = '${bgMainHSL ? `${bgMainHSL.h} ${bgMainHSL.s}% ${bgMainHSL.l}%` : '0 0% 99%'}';
+    function fixGradients() {
+      var solid = 'hsl(' + HSL_MAIN + ')';
+      var semi = 'hsl(' + HSL_MAIN + ' / 0.75)';
+      var clear = 'hsl(' + HSL_MAIN + ' / 0)';
+      var gradDown = 'linear-gradient(to bottom,' + solid + ' 50%,' + semi + ' 75%,' + clear + ')';
+      var gradUp = 'linear-gradient(to top,' + solid + ',transparent)';
+      var fromEls = document.querySelectorAll('[class*="from-bg-100"]');
+      for (var i = 0; i < fromEls.length; i++) {
+        var cls = fromEls[i].className || '';
+        if (cls.indexOf('bg-gradient-to-b') > -1) {
+          fromEls[i].style.setProperty('background-image', gradDown, 'important');
+        } else if (cls.indexOf('bg-gradient-to-t') > -1) {
+          fromEls[i].style.setProperty('background-image', gradUp, 'important');
+        }
+      }
+    }
+    fixGradients();
+
+    // 6. Cleanup legacy polling (from previous v0.6 injections)
     if (window.__themeInterval) { clearInterval(window.__themeInterval); delete window.__themeInterval; }
     if (window.__themeObs) { window.__themeObs.disconnect(); delete window.__themeObs; }
 
