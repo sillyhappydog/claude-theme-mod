@@ -37,6 +37,40 @@ function resolveMode(t) {
 const themeMode = resolveMode(theme);
 console.log(`Theme: "${theme.name || 'unnamed'}" | Mode: ${themeMode}`);
 
+// ── Syntax color derivation ─────────────────────────────────────────
+// Claude Desktop hardcodes One Dark (dark-only) syntax highlighting via
+// Shiki inline styles on <span> elements. We override ALL token colors
+// to a single readable color based on codeBg luminance.
+// No per-token differentiation — this is a chat app, not an IDE.
+
+function hexToLinear(hex) {
+  const r = parseInt(hex.slice(1,3),16)/255;
+  const g = parseInt(hex.slice(3,5),16)/255;
+  const b = parseInt(hex.slice(5,7),16)/255;
+  const toLinear = c => c <= 0.04045 ? c/12.92 : Math.pow((c+0.055)/1.055, 2.4);
+  return 0.2126*toLinear(r) + 0.7152*toLinear(g) + 0.0722*toLinear(b);
+}
+
+function buildSyntaxColors(t, mode) {
+  // Determine effective code block background
+  let codeBgHex = t.bgMain || (mode === 'dark' ? '#000000' : '#ffffff');
+  if (t.codeBg && /^#[0-9a-fA-F]{6}$/.test(t.codeBg)) {
+    codeBgHex = t.codeBg;
+  }
+
+  const bgLum = hexToLinear(codeBgHex);
+  // Pick text color: dark text on light bg, light text on dark bg
+  // Use textPrimary if available and has sufficient contrast, otherwise black/white
+  const textColor = bgLum > 0.18 ? (t.textPrimary || '#000000') : '#ffffff';
+
+  console.log(`  Syntax: codeBg=${codeBgHex} lum=${bgLum.toFixed(3)} → text=${textColor}`);
+  // Target all code rendering contexts:
+  // - .code-block__code: covers both <pre> (regular code blocks) and <div> (tool call Response)
+  // - .code-block__code code: the inner <code> element with inline color
+  // - span.token[style]: individual Shiki-styled tokens (code blocks + tool call Request/Response)
+  return `.code-block__code,.code-block__code code,.code-block__code span[style],span.token[style]{color:${textColor}!important}`;
+}
+
 // ── VAR_MAP ─────────────────────────────────────────────────────────
 
 const VAR_MAP = {
@@ -119,6 +153,12 @@ function buildContentScript() {
 
   // Disclaimer bar ("Claude is AI and can make mistakes") — uses bg-bg-100 (sidebar color), force to bgMain
   css += `.text-center.text-xs.py-2.bg-bg-100{background-color:${bgMain}!important}`;
+
+  // ── hljs syntax highlighting override ──
+  // Derive all token colors from existing theme.json keys (no direct color specification).
+  // One Dark (dark-only) is hardcoded by Claude Desktop — override for both modes.
+  const syntaxCss = buildSyntaxColors(theme, themeMode);
+  if (syntaxCss) css += syntaxCss;
 
   // Title/nav bar strip — df-pill-indicator and any remaining header elements
   css += `.df-pill-indicator{background-color:${bgMain}!important}`;
