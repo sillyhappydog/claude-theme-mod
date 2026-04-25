@@ -3,7 +3,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const file = path.join(__dirname, '..', 'app_src', '.vite', 'build', 'index.js');
+const file = process.argv[2] || path.join(__dirname, '..', '..', 'claude-theme-mod-work', 'app_src', '.vite', 'build', 'index.js');
 let content = fs.readFileSync(file, 'utf-8');
 
 // --- Patch 1: setThemeMode noop ---

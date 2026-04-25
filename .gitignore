@@ -1,17 +1,13 @@
-# Build artifacts
-*.exe
-*.asar
+# Dependencies
 node_modules/
 
 # IDE
 .idea/
 
-# Extracted asar working directories
+# Build artifacts (should be in claude-theme-mod-work/, not here)
+*.exe
+*.asar
 app_*/
-
-# Package metadata (not needed for end users)
-package.json
-package-lock.json
 
 # Internal workflow files
 TASK_*.md
@@ -21,15 +17,6 @@ PROMPT_*.md
 PROMPT_*.txt
 !PROMPT_FOR_CLAUDE_CODE.md
 
-# Diagnostic/experimental scripts (not part of the release)
-tools/_cdp_*.js
-tools/_fix_*.js
-tools/_patch_hardcode.js
-tools/cdp_*.js
-!tools/cdp_full_theme.js
-
 # Temporary files
 *.backup
 _dump*.txt
-_wsc.txt
-_diag_check/
