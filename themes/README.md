@@ -41,6 +41,21 @@ cp themes/summers.json ~/.claude/theme.json
 
 Glass and glow effects are disabled by default for light themes (they're designed for dark backgrounds).
 
+## Arizona Iced Tea (Light Theme)
+
+Inspired by the iconic teal-and-pink Arizona Iced Tea cans. A light theme with a mint-green base and sakura pink code blocks.
+
+```bash
+cp themes/arizona.json ~/.claude/theme.json
+```
+
+### Design notes
+
+- **Mint background** (`#D4F1EC`) with a deeper teal sidebar (`#A8E0D6`). The palette is pulled from the can's cherry blossom artwork — cool greens with warm pink accents.
+- **Code blocks** use `#ff78a6` (sakura pink) — a deliberate contrast that makes code stand out against the teal without clashing. Pastel pinks were tested and rejected because they buried the text.
+- **Accent color** (`#D4688A`) is a muted rose, used for buttons and links. It bridges the gap between the pink code blocks and the green background.
+- Glass and glow effects are disabled — they're designed for dark backgrounds.
+
 ## Theme JSON Schema
 
 Create a JSON file with any subset of the supported keys:
