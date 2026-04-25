@@ -49,6 +49,7 @@ https://api.anthropic.com/api/desktop/win32/x64/squirrel/update/RELEASES
 - Only barrier: Electron Fuses (flipFuses with @electron/fuses)
 
 ## Modding shortest path
+
 1. winget install Anthropic.Claude
 2. node flip_fuses.js (disable asar integrity, enable inspect)
 3. asar extract → patch argv guard + 3-patch (setThemeMode/HSA/ext) → repack
@@ -58,19 +59,31 @@ https://api.anthropic.com/api/desktop/win32/x64/squirrel/update/RELEASES
 ## Disable auto-update
 
 Rename Update.exe to prevent Squirrel from checking for updates:
+
 ```powershell
 Rename-Item "$env:LOCALAPPDATA\AnthropicClaude\Update.exe" "Update.exe.disabled"
 ```
 
 To re-enable:
+
 ```powershell
 Rename-Item "$env:LOCALAPPDATA\AnthropicClaude\Update.exe.disabled" "Update.exe"
 ```
 
 ## Version history / auto-update flow
+
 ```
 v1.3883.0 (initial Squirrel install via winget)
     ↓ auto-update (app close triggers Squirrel)
+```
+```
+```
+```
+```
+```
+```
+```
+```
 v1.4758.0 (nupkg download → extracted to app-1.4758.0)
     ↓ all patches reset, re-patch required
 ```
