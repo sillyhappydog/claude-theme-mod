@@ -1,6 +1,6 @@
 # Claude Desktop Squirrel Installer Archive
 
-## ⚠️ SAVE THIS BEFORE ANTHROPIC KILLS IT
+## ⚠️ Squirrel installer archive — save a copy in case the download URL changes
 
 Browser download → MSIX (locked down)
 winget install  → Squirrel/exe (moddable)
